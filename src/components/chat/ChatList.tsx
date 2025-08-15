@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
 import { apolloClient } from "/home/project/src/lib/apollo.ts";
-import { nhost } from "/home/project/src/lib/apollo.ts";
+import { nhost } from "/home/project/src/lib/nhost.ts";
 import { gql } from "@apollo/client";
 import clsx from "clsx";
 
