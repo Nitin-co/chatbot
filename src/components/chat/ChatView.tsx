@@ -67,30 +67,33 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   };
 
   const handleSendMessage = async (text: string) => {
-    const userId = nhost.auth.getUser()?.id;
-    if (!userId) return;
+  // Get current user
+  const user = nhost.auth.getUser();
+  if (!user) {
+    console.error("User not authenticated");
+    return;
+  }
 
-    try {
-      // Insert user message
-      const { data } = await apolloClient.mutate({
-        mutation: INSERT_MESSAGE,
-        variables: { chat_id: chatId, text, sender: "user" },
-      });
+  try {
+    // Insert user message
+    const { data } = await apolloClient.mutate({
+      mutation: INSERT_MESSAGE,
+      variables: {
+        chat_id: chatId,          // must be valid UUID
+        text: text,
+        sender: "user",           // ensure column exists & is allowed
+      },
+    });
 
+    if (data?.insert_messages_one) {
       setMessages((prev) => [...prev, data.insert_messages_one]);
-      scrollToBottom();
-
-      // Call your AI / SendMessage Action here if needed
-      // Example:
-      // await apolloClient.mutate({
-      //   mutation: SEND_MESSAGE_ACTION,
-      //   variables: { chat_id: chatId, message: text },
-      // });
-
-    } catch (err) {
-      console.error("Error sending message:", err);
     }
-  };
+  } catch (err: any) {
+    console.error("Error sending message:", err);
+    if (err.graphQLErrors) console.error(err.graphQLErrors);
+  }
+};
+
 
   useEffect(() => {
     fetchMessages();
