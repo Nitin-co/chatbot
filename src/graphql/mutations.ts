@@ -1,11 +1,24 @@
 import { gql } from '@apollo/client'
 
-// Create a new chat
-export const CREATE_CHAT = gql`
-  mutation CreateChat {
-    insert_chats_one(object: {}) {
+// Create a new chat with a default bot message
+export const CREATE_CHAT_WITH_MESSAGE = gql`
+  mutation CreateChatWithMessage {
+    insert_chats_one(object: {
+      messages: {
+        data: {
+          text: "New chat"
+          sender: "bot"
+        }
+      }
+    }) {
       id
       created_at
+      messages {
+        id
+        text
+        sender
+        created_at
+      }
     }
   }
 `
