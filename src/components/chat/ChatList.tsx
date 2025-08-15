@@ -1,7 +1,7 @@
 import React from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_CHATS, SUBSCRIBE_TO_CHATS } from '../../graphql/queries'
-import { CREATE_CHAT } from '../../graphql/mutations'
+import { CREATE_CHAT_WITH_MESSAGE } from '../../graphql/mutations'
 import { Chat } from '../../types'
 import { Plus, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
@@ -22,7 +22,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     }
   })
 
-  const [createChat, { loading: creating }] = useMutation(CREATE_CHAT, {
+  const [createChat, { loading: creating }] = useMutation(CREATE_CHAT_WITH_MESSAGE, {
     onCompleted: (data) => {
       onSelectChat(data.insert_chats_one.id)
     },
