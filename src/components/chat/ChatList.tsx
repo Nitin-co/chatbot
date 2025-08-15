@@ -1,8 +1,8 @@
 // src/components/chat/ChatList.tsx
 import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
-import { apolloClient } from "/home/project/src/lib/apollo.ts";
-import { nhost } from "/home/project/src/lib/nhost.ts";
+import { apolloClient } from "../lib/apollo";
+import { nhost } from "../lib/nhost";
 import { gql } from "@apollo/client";
 import clsx from "clsx";
 
@@ -35,17 +35,16 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const [loading, setLoading] = useState(false);
 
   const fetchChats = async () => {
-    const userId = nhost.auth.getUser()?.id;
-    if (!userId) return;
+    const user = nhost.auth.getUser();
+    if (!user) return;
 
     try {
       setLoading(true);
       const { data } = await apolloClient.query({
         query: GET_CHATS,
-        variables: { user_id: userId },
+        variables: { user_id: user.id },
         fetchPolicy: "network-only",
       });
-
       setChats(data.chats || []);
     } catch (err) {
       console.error("Error loading chats:", err);
@@ -55,8 +54,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   };
 
   const handleCreateChat = async () => {
-    const userId = nhost.auth.getUser()?.id;
-    if (!userId) {
+    const user = nhost.auth.getUser();
+    if (!user) {
       console.error("No logged-in user found");
       return;
     }
@@ -64,7 +63,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     try {
       const { data } = await apolloClient.mutate({
         mutation: CREATE_CHAT,
-        variables: { user_id: userId },
+        variables: { user_id: user.id },
       });
 
       const newChat = data.insert_chats_one;
