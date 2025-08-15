@@ -53,3 +53,13 @@ export const SUBSCRIBE_TO_MESSAGES = gql`
     }
   }
 `
+
+// New: mutation to create a default chat if none exist
+export const CREATE_DEFAULT_CHAT = gql`
+  mutation CreateDefaultChat {
+    insert_chats_one(object: {}) {
+      id
+      created_at
+    }
+  }
+`
