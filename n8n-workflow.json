@@ -1,254 +1,161 @@
 {
-  "name": "Chatbot AI Response Workflow",
+  "name": "AI Chatbot Workflow",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "hasura-send-message",
-        "responseMode": "responseNode",
-        "options": {
-          "allowedOrigins": "*"
-        }
+        "path": "send-message",
+        "responseMode": "lastNode",
+        "options": {}
       },
-      "id": "webhook-trigger",
-      "name": "Webhook - Hasura Action",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [240, 300],
-      "webhookId": "hasura-send-message"
+      "typeVersion": 2,
+      "position": [
+        -300,
+        0
+      ],
+      "name": "Webhook"
     },
     {
       "parameters": {
-        "functionCode": "// Validate request and extract data\nconst headers = $('Webhook - Hasura Action').first().json.headers;\nconst body = $('Webhook - Hasura Action').first().json.body;\n\n// Check for required Hasura headers\nconst userId = headers['x-hasura-user-id'];\nif (!userId) {\n  return [{ error: 'Unauthorized: Missing user ID' }];\n}\n\n// Extract action input\nconst { chat_id, text } = body.input;\nif (!chat_id || !text) {\n  return [{ error: 'Missing required fields: chat_id or text' }];\n}\n\n// Prepare data for next nodes\nreturn [{\n  userId,\n  chatId: chat_id,\n  userMessage: text,\n  hasuraHeaders: {\n    'X-Hasura-Admin-Secret': process.env.NHOST_ADMIN_SECRET,\n    'Content-Type': 'application/json'\n  },\n  hasuraUrl: process.env.NHOST_GRAPHQL_URL\n}];"
-      },
-      "id": "validate-request",
-      "name": "Validate Request",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "url": "={{ $json.hasuraUrl }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "httpMethod": "POST",
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "headerParameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "Bearer {{$credentials.openrouter.apiKey}}"
+          }
+        ],
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful chatbot.\" },\n    { \"role\": \"user\", \"content\": {{$json[\"body\"][\"message\"]}} }\n  ]\n}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ],
+      "name": "Send to AI"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
             {
-              "name": "X-Hasura-Admin-Secret",
-              "value": "={{ $json.hasuraHeaders['X-Hasura-Admin-Secret'] }}"
+              "name": "botReply",
+              "value": "={{ $json[\"choices\"][0][\"message\"][\"content\"] }}",
+              "type": "string"
             },
+            {
+              "name": "variables",
+              "value": "={\"chat_id\": $json[\"body\"][\"chat_id\"], \"text\": $json[\"botReply\"]}",
+              "type": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        180,
+        0
+      ],
+      "name": "Set Bot Reply Variables"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rvmtvbxomszjibeiocvu.hasura.eu-central-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "headerParameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "x-hasura-admin-secret",
+            "value": "{{$credentials.nhost.adminSecret}}"
+          }
+        ],
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation InsertBotMessage($chat_id: uuid!, $text: String!) { insert_messages_one(object: { chat_id: $chat_id, sender: \\\"bot\\\", text: $text }) { id chat_id sender text created_at } }\",\n  \"variables\": $json[\"variables\"]\n}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        380,
+        0
+      ],
+      "name": "Insert Bot Message"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": [
             {
               "name": "Content-Type",
               "value": "application/json"
             }
           ]
-        },
-        "sendBody": true,
-        "contentType": "json",
-        "jsonParameters": true,
-        "bodyParametersJson": "={\n  \"query\": \"query VerifyChat($chat_id: uuid!, $user_id: uuid!) { chats(where: {id: {_eq: $chat_id}, user_id: {_eq: $user_id}}) { id user_id } }\",\n  \"variables\": {\n    \"chat_id\": \"{{ $json.chatId }}\",\n    \"user_id\": \"{{ $json.userId }}\"\n  }\n}"
-      },
-      "id": "verify-chat-ownership",
-      "name": "Verify Chat Ownership",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [680, 300]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "check-chat-ownership",
-              "leftValue": "={{ $json.data.chats.length }}",
-              "rightValue": 1,
-              "operator": {
-                "type": "number",
-                "operation": "equal"
-              }
-            }
-          ],
-          "combinator": "and"
         }
       },
-      "id": "check-authorization",
-      "name": "Check Authorization",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [900, 300]
-    },
-    {
-      "parameters": {
-        "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "httpMethod": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{ process.env.OPENROUTER_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "json",
-        "jsonParameters": true,
-        "bodyParametersJson": "={\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant. Respond in a conversational and friendly manner.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Validate Request').first().json.userMessage }}\"\n    }\n  ],\n  \"max_tokens\": 500,\n  \"temperature\": 0.7\n}"
-      },
-      "id": "call-openrouter-api",
-      "name": "Call OpenRouter API",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1120, 200]
-    },
-    {
-      "parameters": {
-        "url": "={{ $('Validate Request').first().json.hasuraUrl }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "httpMethod": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Hasura-Admin-Secret",
-              "value": "={{ $('Validate Request').first().json.hasuraHeaders['X-Hasura-Admin-Secret'] }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "json",
-        "jsonParameters": true,
-        "bodyParametersJson": "={\n  \"query\": \"mutation SendMessage($chat_id: uuid!, $text: String!) { sendMessage(input: { chat_id: $chat_id, text: $text }) { id chat_id sender text created_at } }\",\n  \"variables\": {\n    \"chat_id\": \"{{ $('Validate Request').first().json.chatId }}\",\n    \"text\": \"{{ $json.choices[0].message.content }}\"\n  }\n}"
-      },
-      "id": "save-bot-response",
-      "name": "Save Bot Response",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1340, 200]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Response sent successfully\"\n}"
-      },
-      "id": "success-response",
-      "name": "Success Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1560, 200]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"success\": false,\n  \"message\": \"Unauthorized: You don't own this chat\"\n}",
-        "responseCode": 403
-      },
-      "id": "unauthorized-response",
-      "name": "Unauthorized Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1120, 400]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"success\": false,\n  \"message\": \"{{ $json.error || 'Internal server error' }}\"\n}",
-        "responseCode": 500
-      },
-      "id": "error-response",
-      "name": "Error Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [680, 500]
+      "position": [
+        580,
+        0
+      ],
+      "name": "Respond to Frontend"
     }
   ],
   "connections": {
-    "Webhook - Hasura Action": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Validate Request",
+            "node": "Send to AI",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Request": {
+    "Send to AI": {
       "main": [
         [
           {
-            "node": "Verify Chat Ownership",
+            "node": "Set Bot Reply Variables",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify Chat Ownership": {
+    "Set Bot Reply Variables": {
       "main": [
         [
           {
-            "node": "Check Authorization",
+            "node": "Insert Bot Message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Authorization": {
+    "Insert Bot Message": {
       "main": [
         [
           {
-            "node": "Call OpenRouter API",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Unauthorized Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call OpenRouter API": {
-      "main": [
-        [
-          {
-            "node": "Save Bot Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save Bot Response": {
-      "main": [
-        [
-          {
-            "node": "Success Response",
+            "node": "Respond to Frontend",
             "type": "main",
             "index": 0
           }
@@ -256,13 +163,7 @@
       ]
     }
   ],
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "id": "chatbot",
-      "name": "chatbot"
-    }
-  ]
+  "active": true,
+  "settings": {},
+  "versionId": "1"
 }
