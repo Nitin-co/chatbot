@@ -98,7 +98,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ process.env.OPENROUTER_API_KEY }}"
+              "value": "Bearer {{  }}"
             },
             {
               "name": "Content-Type",
@@ -128,8 +128,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-Hasura-Admin-Secret",
-              "value": "={{ $('Validate Request').first().json.hasuraHeaders['X-Hasura-Admin-Secret'] }}"
+              "name": "t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:",
+              "value": "={{ $('Validate Request').first().json.hasuraHeaders['t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:'] }}"
             },
             {
               "name": "Content-Type",
