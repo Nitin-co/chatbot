@@ -129,7 +129,7 @@
           "parameters": [
             {
               "name": "t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:",
-              "value": "={{ $('Validate Request').first().json.hasuraHeaders['t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:'] }}"
+              "value": "={{ $('Validate Request').first().json.hasuraHeaders['X-Hasura-Admin-Secret'] }}"
             },
             {
               "name": "Content-Type",
