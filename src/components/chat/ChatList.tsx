@@ -5,7 +5,7 @@ import { CREATE_CHAT } from '../../graphql/mutations'
 import { Chat } from '../../types'
 import { Plus, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
-import { nhost } from '../../graphql/nhost' // make sure nhost import is correct
+import { nhost } from '../../graphql/nhost.ts' // make sure nhost import is correct
 
 interface ChatListProps {
   selectedChatId?: string
