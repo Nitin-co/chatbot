@@ -9,7 +9,7 @@ export const GET_CHATS = gql`
     messages(order_by: { created_at: asc }, limit: 1) {
       text
       sender
-    }
+     }
     }
   }
 `
