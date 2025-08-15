@@ -3,11 +3,11 @@ import { BrowserRouter as Router } from 'react-router-dom'
 import { NhostProvider } from '@nhost/react'
 import { ApolloProvider } from '@apollo/client'
 import { useAuthenticationStatus } from '@nhost/react'
-import { nhost } from './lib/nhost'
-import { apolloClient } from './lib/apollo'
-import { Layout } from './components/Layout'
-import { AuthPage } from './components/auth/AuthPage'
-import { ChatPage } from './pages/ChatPage'
+import { nhost } from '/home/project/src/lib/nhost.ts'
+import { apolloClient } from '/home/project/src/lib/apollo.ts'
+import { Layout } from '/home/project/src/components/Layout.tsx'
+import { AuthPage } from '/home/project/src/components/auth/AuthPage.tsx'
+import { ChatPage } from '/home/project/src/pages/ChatPage.tsx'
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuthenticationStatus()
