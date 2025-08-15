@@ -40,3 +40,11 @@ export const SEND_MESSAGE_ACTION = gql`
     }
   }
 `
+export const SEND_MESSAGE_ACTION = gql`
+  mutation SendMessage($chat_id: uuid!, $message: String!) {
+    sendMessage(chat_id: $chat_id, message: $message) {
+      success
+      message
+    }
+  }
+`
