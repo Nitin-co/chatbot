@@ -1,5 +1,5 @@
 import React from 'react'
-import { Message } from '../../types'
+import { Message } from '/home/project/src/types'
 import { Bot, User } from 'lucide-react'
 import clsx from 'clsx'
 
