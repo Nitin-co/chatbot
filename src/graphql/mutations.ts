@@ -1,5 +1,6 @@
 import { gql } from '@apollo/client'
 
+// Create a new chat
 export const CREATE_CHAT = gql`
   mutation CreateChat {
     insert_chats_one(object: {}) {
@@ -9,6 +10,7 @@ export const CREATE_CHAT = gql`
   }
 `
 
+// Insert a message directly (optional, mostly for testing)
 export const INSERT_MESSAGE = gql`
   mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
     insert_messages_one(object: {
@@ -24,11 +26,15 @@ export const INSERT_MESSAGE = gql`
   }
 `
 
-export const SEND_MESSAGE_ACTION = gql`
-  mutation SendMessage($chat_id: uuid!, $message: String!) {
-    sendMessage(chat_id: $chat_id, message: $message) {
-      success
-      message
+// ✅ Use the Hasura Action for sending a message and triggering the chatbot
+export const SEND_MESSAGE = gql`
+  mutation SendMessage($chat_id: uuid!, $text: String!) {
+    sendMessage(input: { chat_id: $chat_id, text: $text }) {
+      id
+      chat_id
+      sender
+      text
+      created_at
     }
   }
 `
