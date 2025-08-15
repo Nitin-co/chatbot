@@ -1,9 +1,9 @@
 // src/components/chat/ChatView.tsx
 import React, { useEffect, useState, useRef } from "react";
-import { apolloClient } from "../lib/apollo";
+import { apolloClient } from "/home/project/src/lib/apollo.ts";
 import { gql } from "@apollo/client";
-import { nhost } from "../lib/nhost";
-import { MessageInput } from "./MessageInput";
+import { nhost } from "/home/project/src/lib/nhost.ts";
+import { MessageInput } from "/home/project/src/components/chat/MessageInput.tsx";
 
 const GET_MESSAGES = gql`
   query GetMessages($chat_id: uuid!) {
