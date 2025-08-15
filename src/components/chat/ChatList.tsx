@@ -1,8 +1,8 @@
 // src/components/chat/ChatList.tsx
 import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
-import { apolloClient } from "../lib/apollo";
-import { nhost } from "../lib/nhost";
+import { apolloClient } from "/home/project/src/lib/apollo.ts";
+import { nhost } from "/home/project/src/lib/nhost.ts";
 import { gql } from "@apollo/client";
 import clsx from "clsx";
 
