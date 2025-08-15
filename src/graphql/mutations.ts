@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client'
 
-// Mutation to insert a new chat
+// Create a new chat
 export const CREATE_CHAT = gql`
   mutation CreateChat {
     insert_chats_one(object: {}) {
@@ -10,16 +10,14 @@ export const CREATE_CHAT = gql`
   }
 `
 
-// Mutation to insert a message (user or bot)
+// Insert a user message
 export const INSERT_MESSAGE = gql`
   mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
-    insert_messages_one(
-      object: {
-        chat_id: $chat_id
-        text: $text
-        sender: $sender
-      }
-    ) {
+    insert_messages_one(object: {
+      chat_id: $chat_id
+      text: $text
+      sender: $sender
+    }) {
       id
       text
       sender
@@ -28,18 +26,7 @@ export const INSERT_MESSAGE = gql`
   }
 `
 
-// Mutation corresponding to your Hasura action sendMessage
-export const SEND_MESSAGE_ACTION = gql`
-  mutation SendMessage($chat_id: uuid!, $message: String!) {
-    sendMessage(input: { chat_id: $chat_id, text: $message }) {
-      id
-      chat_id
-      sender
-      text
-      created_at
-    }
-  }
-`
+// Send message to AI (Hasura Action)
 export const SEND_MESSAGE_ACTION = gql`
   mutation SendMessage($chat_id: uuid!, $message: String!) {
     sendMessage(chat_id: $chat_id, message: $message) {
