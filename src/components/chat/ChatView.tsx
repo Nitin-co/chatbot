@@ -1,11 +1,10 @@
 // src/components/chat/ChatView.tsx
 import React, { useEffect, useState, useRef } from "react";
-import { apolloClient } from "/home/project/src/lib/apollo.ts";
+import { apolloClient } from "../lib/apollo";
 import { gql } from "@apollo/client";
-import { nhost } from "/home/project/src/lib/nhost.ts";
-import { MessageInput } from "/home/project/src/components/chat/MessageInput.tsx";
+import { nhost } from "../lib/nhost";
+import { MessageInput } from "./MessageInput";
 
-// GraphQL queries/mutations
 const GET_MESSAGES = gql`
   query GetMessages($chat_id: uuid!) {
     messages(where: { chat_id: { _eq: $chat_id } }, order_by: { created_at: asc }) {
@@ -67,33 +66,31 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   };
 
   const handleSendMessage = async (text: string) => {
-  // Get current user
-  const user = nhost.auth.getUser();
-  if (!user) {
-    console.error("User not authenticated");
-    return;
-  }
-
-  try {
-    // Insert user message
-    const { data } = await apolloClient.mutate({
-      mutation: INSERT_MESSAGE,
-      variables: {
-        chat_id: chatId,          // must be valid UUID
-        text: text,
-        sender: "user",           // ensure column exists & is allowed
-      },
-    });
-
-    if (data?.insert_messages_one) {
-      setMessages((prev) => [...prev, data.insert_messages_one]);
+    const user = nhost.auth.getUser();
+    if (!user) {
+      console.error("User not authenticated");
+      return;
     }
-  } catch (err: any) {
-    console.error("Error sending message:", err);
-    if (err.graphQLErrors) console.error(err.graphQLErrors);
-  }
-};
 
+    try {
+      const { data } = await apolloClient.mutate({
+        mutation: INSERT_MESSAGE,
+        variables: {
+          chat_id: chatId,
+          text: text,
+          sender: "user", // Must match messages table column
+        },
+      });
+
+      if (data?.insert_messages_one) {
+        setMessages((prev) => [...prev, data.insert_messages_one]);
+        scrollToBottom();
+      }
+    } catch (err: any) {
+      console.error("Error sending message:", err);
+      if (err.graphQLErrors) console.error(err.graphQLErrors);
+    }
+  };
 
   useEffect(() => {
     fetchMessages();
