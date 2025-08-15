@@ -1,4 +1,3 @@
-// graphql/mutations.ts
 import { gql } from '@apollo/client'
 
 // Create a new chat with user_id
