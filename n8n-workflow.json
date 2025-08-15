@@ -37,8 +37,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-Hasura-Admin-Secret",
-              "value": "={{ $json.hasuraHeaders['X-Hasura-Admin-Secret'] }}"
+              "name": "t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:",
+              "value": "={{ $json.hasuraHeaders['t$tlFeRRQcmqqq(L,ppiO#sfoe;n4=4:'] }}"
             },
             {
               "name": "Content-Type",
