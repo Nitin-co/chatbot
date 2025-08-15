@@ -1,10 +1,11 @@
 import React from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { GET_CHATS, SUBSCRIBE_TO_CHATS } from '../../graphql/queries'
-import { CREATE_CHAT_WITH_MESSAGE } from '../../graphql/mutations'
+import { CREATE_CHAT } from '../../graphql/mutations'
 import { Chat } from '../../types'
 import { Plus, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
+import { nhost } from '../../graphql/nhost' // make sure nhost import is correct
 
 interface ChatListProps {
   selectedChatId?: string
@@ -22,7 +23,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     }
   })
 
-  const [createChat, { loading: creating }] = useMutation(CREATE_CHAT_WITH_MESSAGE, {
+  const [createChat, { loading: creating }] = useMutation(CREATE_CHAT, {
     onCompleted: (data) => {
       onSelectChat(data.insert_chats_one.id)
     },
@@ -30,7 +31,13 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   })
 
   const handleCreateChat = async () => {
-    await createChat()
+    try {
+      const userId = nhost.auth.getUserId()
+      if (!userId) return alert('You must be logged in')
+      await createChat({ variables: { user_id: userId } })
+    } catch (err) {
+      console.error('Error creating chat:', err)
+    }
   }
 
   const formatPreview = (chat: Chat) => {
@@ -55,21 +62,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     }
   }
 
-  if (loading) {
-    return (
-      <div className="w-80 bg-white border-r border-gray-200 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="w-80 bg-white border-r border-gray-200 p-4">
-        <p className="text-red-600 text-sm">Error loading chats</p>
-      </div>
-    )
-  }
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error loading chats</div>
 
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
@@ -93,7 +87,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {data?.chats?.map((chat: Chat) => (
+            {data.chats.map((chat: Chat) => (
               <button
                 key={chat.id}
                 onClick={() => onSelectChat(chat.id)}
