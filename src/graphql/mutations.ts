@@ -26,7 +26,6 @@ export const INSERT_MESSAGE = gql`
   }
 `
 
-// ✅ Use the Hasura Action for sending a message and triggering the chatbot
 export const SEND_MESSAGE = gql`
   mutation SendMessage($chat_id: uuid!, $text: String!) {
     sendMessage(input: { chat_id: $chat_id, text: $text }) {
