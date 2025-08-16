@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { useQuery, useMutation } from '/home/project/src/lib/apollo.ts'
+import { useQuery, useMutation } from '@apollo/client'
 import { MessageBubble } from '/home/project/src/components/chat/MessageBubble.tsx'
 import { MessageInput } from '/home/project/src/components/chat/MessageInput.tsx'
 import { GET_CHAT_MESSAGES } from '/home/project/src/graphql/queries.ts'
