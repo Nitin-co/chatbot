@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { useQuery, useMutation } from '@apollo/client'
-import { MessageBubble } from './MessageBubble'
-import { MessageInput } from './MessageInput'
-import { GET_CHAT_MESSAGES } from '../../graphql/queries'
-import { INSERT_MESSAGE } from '../../graphql/mutations'
+import { useQuery, useMutation } from '/home/project/src/lib/apollo.ts'
+import { MessageBubble } from '/home/project/src/components/chat/MessageBubble.tsx'
+import { MessageInput } from '/home/project/src/components/chat/MessageInput.tsx'
+import { GET_CHAT_MESSAGES } from '/home/project/src/graphql/queries.ts'
+import { INSERT_MESSAGE } from '/home/project/src/graphql/mutations.ts'
 import { Bot, User, Loader } from 'lucide-react'
 
 interface Message {
