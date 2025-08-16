@@ -1,110 +1,74 @@
-// src/components/chat/ChatList.tsx
-import React, { useEffect, useState } from "react";
-import { Plus, MessageCircle } from "lucide-react";
-import { apolloClient } from "/home/project/src/lib/apollo.ts";
-import { nhost } from "/home/project/src/lib/nhost.ts";
-import { useSubscription } from "@apollo/client";
-import clsx from "clsx";
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "/home/project/src/graphql/queries.ts";
+// src/components/chat/ChatView.tsx
+import React, { useEffect, useRef, useState } from "react";
+import { useMutation, useSubscription } from "@apollo/client";
+import { Loader } from "lucide-react";
 
-// Types
-interface Chat {
+import { SUBSCRIBE_TO_MESSAGES } from "../graphql/queries";
+import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from "../graphql/mutations";
+import { MessageBubble } from "./MessageBubble";
+import { MessageInput } from "./MessageInput";
+
+interface Message {
   id: string;
+  text: string;
+  sender: "user" | "bot";
   created_at: string;
-  messages?: {
-    id: string;
-    text: string;
-    sender: string;
-    created_at: string;
-  }[];
 }
 
-interface ChatListProps {
-  selectedChatId?: string;
-  onSelectChat: (chatId: string) => void;
+interface ChatViewProps {
+  chatId: string;
 }
 
-export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(false);
+export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
+  const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchChats = async () => {
-    try {
-      setLoading(true);
-      const { data } = await apolloClient.query({ query: GET_CHATS, fetchPolicy: "network-only" });
-      setChats(data.chats || []);
-    } catch (err) {
-      console.error("Error loading chats:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateChat = async () => {
-    try {
-      const { data } = await apolloClient.mutate({ mutation: CREATE_CHAT });
-      const newChat = { ...data.insert_chats_one, messages: [] };
-      setChats((prev) => [newChat, ...prev]);
-      onSelectChat(newChat.id);
-    } catch (err) {
-      console.error("Error creating chat:", err);
-    }
-  };
-
-  useSubscription(SUBSCRIBE_TO_CHATS, {
-    onData: ({ data }) => {
-      if (data.data?.chats) setChats(data.data.chats);
-    },
+  const { data, loading, error } = useSubscription(SUBSCRIBE_TO_MESSAGES, {
+    variables: { chatId },
+    fetchPolicy: "network-only",
   });
 
-  useEffect(() => { fetchChats(); }, []);
+  const [insertMessage] = useMutation(INSERT_MESSAGE);
+  const [sendMessageAction] = useMutation(SEND_MESSAGE_ACTION);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => scrollToBottom(), [data?.messages?.length]);
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isSending) return;
+    setIsSending(true);
+
+    try {
+      const cleaned = text.trim();
+      await insertMessage({ variables: { chat_id: chatId, text: cleaned, sender: "user" } });
+      await sendMessageAction({ variables: { chat_id: chatId, text: cleaned } });
+    } catch (e) {
+      console.error("Error sending message", e);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (loading && !data) return (
+    <div className="flex-1 flex items-center justify-center">
+      <Loader className="h-8 w-8 animate-spin text-blue-600" />
+    </div>
+  );
+
+  if (error) return <p className="text-red-600">Unable to load messages.</p>;
+
+  const messages: Message[] = data?.messages ?? [];
 
   return (
-    <div className="flex flex-col p-4 border-r border-gray-200 h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Chats</h2>
-        <button
-          onClick={handleCreateChat}
-          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+    <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+        <div ref={messagesEndRef} />
       </div>
-
-      {loading ? (
-        <p>Loading...</p>
-      ) : chats.length === 0 ? (
-        <p className="text-gray-500 text-sm">No chats yet</p>
-      ) : (
-        <ul className="space-y-2 overflow-y-auto">
-          {chats.map((chat) => {
-            const lastMsg = chat.messages?.[chat.messages.length - 1];
-            return (
-              <li
-                key={chat.id}
-                onClick={() => onSelectChat(chat.id)}
-                className={clsx(
-                  "p-2 rounded-lg cursor-pointer flex flex-col hover:bg-gray-100",
-                  selectedChatId === chat.id && "bg-blue-100 font-semibold"
-                )}
-              >
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {lastMsg ? lastMsg.text : new Date(chat.created_at).toLocaleString()}
-                  </span>
-                </div>
-                {lastMsg && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {lastMsg.sender === "user" ? "You" : "Bot"} ·{" "}
-                    {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <MessageInput onSendMessage={handleSendMessage} disabled={isSending} />
     </div>
   );
 };
