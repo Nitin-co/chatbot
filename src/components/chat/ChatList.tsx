@@ -49,20 +49,22 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     },
     onError: (error) => {
       logError('Error creating chat', error)
+      if (
+        (error as any)?.graphQLErrors &&
+        (error as any).graphQLErrors.length > 0
+      ) {
+        alert((error as any).graphQLErrors[0].message)
+      }
       setIsCreating(false)
     }
   })
 
   const handleCreateChat = async () => {
-    if (!user?.id || isCreating) return
+    if (isCreating) return
 
     setIsCreating(true)
     try {
-      await createChat({
-        variables: {
-          user_id: user.id
-        }
-      })
+      await createChat() // No variables needed
     } catch (error) {
       logError('Error creating chat', error)
       setIsCreating(false)
@@ -87,20 +89,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     return date.toLocaleDateString()
   }
 
-  if (loading && !data) {
-    return (
-      <div className="w-80 bg-gray-50 border-r border-gray-200 p-4">
-        <div className="animate-pulse space-y-3">
-          <div className="h-10 bg-gray-200 rounded"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
+    <div className="flex flex-col h-full bg-gray-50 border-r border-gray-200 min-w-[280px] max-w-xs">
       <div className="p-4 border-b border-gray-200">
         <button
           onClick={handleCreateChat}
