@@ -3,27 +3,9 @@ import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
 import { apolloClient } from "/home/project/src/lib/apollo.ts";
 import { nhost } from "/home/project/src/lib/nhost.ts";
-import { gql } from "@apollo/client";
+import { GET_CHATS } from "/home/project/src/graphql/queries.ts";
+import { CREATE_CHAT } from "/home/project/src/graphql/mutations.ts";
 import clsx from "clsx";
-
-// GraphQL queries/mutations
-const GET_CHATS = gql`
-  query GetChats($user_id: uuid!) {
-    chats(where: { user_id: { _eq: $user_id } }, order_by: { created_at: desc }) {
-      id
-      created_at
-    }
-  }
-`;
-
-const CREATE_CHAT = gql`
-  mutation CreateChat {
-    insert_chats_one(object: {}) {
-      id
-      created_at
-    }
-  }
-`;
 
 interface ChatListProps {
   selectedChatId?: string;
@@ -42,7 +24,6 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
       setLoading(true);
       const { data } = await apolloClient.query({
         query: GET_CHATS,
-        variables: { user_id: user.id },
         fetchPolicy: "network-only",
       });
       setChats(data.chats || []);
@@ -63,6 +44,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     try {
       const { data } = await apolloClient.mutate({
         mutation: CREATE_CHAT,
+        variables: { user_id: user.id },
       });
 
       const newChat = data.insert_chats_one;
