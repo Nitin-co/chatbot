@@ -1,20 +1,18 @@
-import React, { useEffect, useRef, useState } from "react"
-import { useMutation, useSubscription } from "@apollo/client"
-import { Loader } from "lucide-react"
+import React, { useEffect, useRef, useState } from 'react'
+import { useMutation, useSubscription } from '@apollo/client'
+import { Loader } from 'lucide-react'
 
-import { SUBSCRIBE_TO_MESSAGES } from "../../graphql/queries"
-import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from "../../graphql/mutations"
-import { MessageBubble } from "./MessageBubble"
-import { MessageInput } from "./MessageInput"
-
+import { SUBSCRIBE_TO_MESSAGES } from '/home/project/src/graphql/queries.ts'
+import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '/home/project/src/graphql/mutations.ts'
+import { MessageBubble } from './MessageBubble'
+import { MessageInput } from './MessageInput'
 
 interface Message {
   id: string
   text: string
-  sender: string   // still display as "user" / "bot" where needed
+  sender: 'user' | 'bot'
   created_at: string
 }
-
 
 interface ChatViewProps {
   chatId: string
@@ -38,9 +36,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
   useEffect(() => {
-    const t = setTimeout(scrollToBottom, 100)
-      return () => clearTimeout(t)
+    scrollToBottom()
   }, [data?.messages?.length])
 
   const handleSendMessage = async (text: string) => {
