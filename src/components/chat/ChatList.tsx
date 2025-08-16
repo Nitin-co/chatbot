@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
 import { apolloClient } from "/home/project/src/lib/apollo.ts";
 import { nhost } from "/home/project/src/lib/nhost.ts";
-import { gql, useSubscription } from "@apollo/client";
+import { useSubscription } from "@apollo/client";
 import clsx from "clsx";
 import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "/home/project/src/graphql/queries.ts";
 
@@ -56,7 +56,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         variables: { user_id: user.id },
       });
 
-      const newChat = data.insert_chats_one;
+      const newChat = { ...data.insert_chats_one, latest_message: [] };
       setChats((prev) => [newChat, ...prev]);
       onSelectChat(newChat.id);
     } catch (err) {
@@ -93,26 +93,37 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         <p className="text-gray-500 text-sm">No chats yet</p>
       ) : (
         <ul className="space-y-2 overflow-y-auto">
-          {chats.map((chat) => (
-            <li
-              key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={clsx(
-                "p-2 rounded-lg cursor-pointer flex flex-col hover:bg-gray-100",
-                selectedChatId === chat.id && "bg-blue-100 font-semibold"
-              )}
-            >
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">{new Date(chat.created_at).toLocaleString()}</span>
-              </div>
-              {chat.latest_message && chat.latest_message.length > 0 && (
-                <p className="text-xs text-gray-500 truncate mt-1">
-                  {chat.latest_message[0].text}
-                </p>
-              )}
-            </li>
-          ))}
+          {chats.map((chat) => {
+            const latestMsg = chat.latest_message?.[0];
+            return (
+              <li
+                key={chat.id}
+                onClick={() => onSelectChat(chat.id)}
+                className={clsx(
+                  "p-2 rounded-lg cursor-pointer flex flex-col hover:bg-gray-100",
+                  selectedChatId === chat.id && "bg-blue-100 font-semibold"
+                )}
+              >
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {latestMsg
+                      ? latestMsg.text
+                      : new Date(chat.created_at).toLocaleString()}
+                  </span>
+                </div>
+                {latestMsg && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {latestMsg.sender === "user" ? "You" : "Bot"} ·{" "}
+                    {new Date(latestMsg.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
