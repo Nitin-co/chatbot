@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useMutation, useSubscription } from '@apollo/client'
-import { Loader } from 'lucide-react'
+import React, { useEffect, useRef, useState } from "react"
+import { useMutation, useSubscription } from "@apollo/client"
+import { Loader } from "lucide-react"
 
-import { SUBSCRIBE_TO_MESSAGES } from '../graphql/queries'
-import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '../graphql/mutations'
-import { MessageBubble } from './MessageBubble'
-import { MessageInput } from './MessageInput'
+import { SUBSCRIBE_TO_MESSAGES } from "../../graphql/queries"
+import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from "../../graphql/mutations"
+import { MessageBubble } from "./MessageBubble"
+import { MessageInput } from "./MessageInput"
+
 
 interface Message {
   id: string
