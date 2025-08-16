@@ -39,14 +39,15 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     errorPolicy: 'all'
   })
 
-  const [createChat] = useMutation(CREATE_CHAT, {
-    onCompleted: (data) => {
-      if (data?.insert_chats_one?.id) {
-        onSelectChat(data.insert_chats_one.id)
-        refetch()
-      }
-      setIsCreating(false)
-    },
+  export const CREATE_CHAT = gql`
+  mutation CreateChat($title: String!) {
+    insert_chats_one(object: { title: $title }) {
+      id
+      created_at
+      title
+    }
+  }
+`,
     onError: (error) => {
   logError('Error creating chat', error);
   // Log detailed error info to console
