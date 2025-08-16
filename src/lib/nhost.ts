@@ -1,10 +1,11 @@
+// src/lib/nhost.ts
 import { NhostClient } from '@nhost/nhost-js'
 
-// ✅ Initialize Nhost client
-const nhost = new NhostClient({
-  subdomain: "rvmtvbxomszjibeiocvu", // replace with your actual subdomain
-  region: "eu-central-1" // your Hasura region
+export const nhost = new NhostClient({
+  subdomain: import.meta.env.VITE_NHOST_SUBDOMAIN || 'rvmtvbxomszjibeiocvu',
+  region: import.meta.env.VITE_NHOST_REGION || 'eu-central-1',
 })
+
 
 // ✅ Sign in
 await nhost.auth.signIn({
