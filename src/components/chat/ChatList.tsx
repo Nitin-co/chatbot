@@ -24,7 +24,6 @@ interface ChatListProps {
 
 export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
   const user = useUserData()
-  const queryClient = useQueryClient()
   const [isCreating, setIsCreating] = useState(false)
 
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
