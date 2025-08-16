@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
 import { apolloClient } from "/home/project/src/lib/apollo.ts";
-import { nhost } from "/home/project/src/lib/nhost.ts";
 import { useSubscription } from "@apollo/client";
 import clsx from "clsx";
 import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "/home/project/src/graphql/queries.ts";
@@ -29,9 +28,6 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const [loading, setLoading] = useState(false);
 
   const fetchChats = async () => {
-    const user = nhost.auth.getUser();
-    if (!user) return;
-
     try {
       setLoading(true);
       const { data } = await apolloClient.query({
@@ -47,13 +43,10 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   };
 
   const handleCreateChat = async () => {
-    const user = nhost.auth.getUser();
-    if (!user) return;
-
     try {
       const { data } = await apolloClient.mutate({
         mutation: CREATE_CHAT,
-        variables: { user_id: user.id },
+        variables: {}, // No user_id
       });
 
       const newChat = { ...data.insert_chats_one, latest_message: [] };
