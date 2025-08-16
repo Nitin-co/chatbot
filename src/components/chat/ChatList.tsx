@@ -17,8 +17,8 @@ const GET_CHATS = gql`
 `;
 
 const CREATE_CHAT = gql`
-  mutation CreateChat($user_id: uuid!) {
-    insert_chats_one(object: { user_id: $user_id }) {
+  mutation CreateChat {
+    insert_chats_one(object: {}) {
       id
       created_at
     }
@@ -63,7 +63,6 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     try {
       const { data } = await apolloClient.mutate({
         mutation: CREATE_CHAT,
-        variables: { user_id: user.id },
       });
 
       const newChat = data.insert_chats_one;
