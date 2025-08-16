@@ -10,7 +10,7 @@ interface Chat {
   id: string
   created_at: string
   title: string
-  messages: Array<{
+  latest_message: Array<{
     id: string
     text: string
     sender: 'user' | 'bot'
@@ -63,7 +63,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   }
 
   const getPreviewText = (chat: Chat) => {
-    const last = chat.messages?.[0] // we query latest message first (see GET_CHATS)
+    const last = chat.latest_message?.[0] // updated to latest_message
     if (!last) return chat.title || 'New chat'
     return last.text.length > 50 ? last.text.slice(0, 50) + '…' : last.text
   }
