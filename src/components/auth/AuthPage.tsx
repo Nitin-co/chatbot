@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SignInForm } from './SignInForm'
+import SignInForm from './SignInForm'
 import { SignUpForm } from './SignUpForm'
 
 export const AuthPage: React.FC = () => {
