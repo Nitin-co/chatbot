@@ -6,16 +6,13 @@ export const nhost = new NhostClient({
   region: import.meta.env.VITE_NHOST_REGION || 'eu-central-1',
 })
 
-// ✅ Send GraphQL request with auth
-const result = await nhost.graphql.request(`
-  mutation CreateChat($title: String!) {
-    insert_chats_one(object: { title: $title }) {
-      id
-      title
-      created_at
-      user_id
-    }
+// Optional: sign in automatically for dev/testing
+;(async () => {
+  const session = await nhost.auth.getSession()
+  if (!session) {
+    await nhost.auth.signIn({
+      email: 'test@example.com',
+      password: 'password123',
+    })
   }
-`, { title: 'My first chat' })
-
-console.log(result)
+})()
