@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { Send } from 'lucide-react'
 
 interface MessageInputProps {
@@ -6,24 +6,16 @@ interface MessageInputProps {
   disabled?: boolean
 }
 
-export const MessageInput: React.FC<MessageInputProps> = ({ 
-  onSendMessage, 
-  disabled = false 
-}) => {
+export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false }) => {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim() || disabled) return
-    
     onSendMessage(message.trim())
     setMessage('')
-    
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
