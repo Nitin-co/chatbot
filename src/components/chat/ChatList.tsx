@@ -1,131 +1,120 @@
-import React, { useState } from 'react'
-import { useQuery, useMutation } from '@apollo/client'
-import { Plus, MessageCircle } from 'lucide-react'
-import clsx from 'clsx'
+// src/components/chat/ChatList.tsx
+import React, { useEffect, useState } from "react";
+import { Plus, MessageCircle } from "lucide-react";
+import { apolloClient } from "../lib/apollo";
+import { nhost } from "../lib/nhost";
+import { gql, useSubscription } from "@apollo/client";
+import clsx from "clsx";
+import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "../../queries";
 
-import { GET_CHATS } from '/home/project/src/graphql/queries.ts'
-import { CREATE_CHAT } from '/home/project/src/graphql/mutations.ts'
-
+// Types
 interface Chat {
-  id: string
-  created_at: string
-  title: string | null
-  latest_message?: Array<{
-    id: string
-    text: string
-    sender: 'user' | 'bot'
-    created_at: string
-  }>
+  id: string;
+  created_at: string;
+  latest_message?: {
+    id: string;
+    text: string;
+    sender: string;
+    created_at: string;
+  }[];
 }
 
 interface ChatListProps {
-  selectedChatId?: string
-  onSelectChat: (chatId: string) => void
-}
-
-function logError(context: string, error: unknown) {
-  if (import.meta.env.DEV) console.error(`[${context}]`, error)
+  selectedChatId?: string;
+  onSelectChat: (chatId: string) => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
-  const [isCreating, setIsCreating] = useState(false)
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const { data, loading, error } = useQuery(GET_CHATS, {
-    fetchPolicy: 'network-only',
-    errorPolicy: 'all'
-  })
+  const fetchChats = async () => {
+    const user = nhost.auth.getUser();
+    if (!user) return;
 
-  // Debug: log fetched chats
-  if (import.meta.env.DEV) console.log('Fetched chats:', data?.chats)
-
-  const [createChat] = useMutation(CREATE_CHAT, {
-    refetchQueries: [GET_CHATS],
-    onError: (err) => {
-      logError('Error creating chat', err)
-      const msg =
-        // @ts-ignore
-        err?.graphQLErrors?.[0]?.message || (err as Error)?.message || 'Failed to create chat'
-      alert(msg)
-      setIsCreating(false)
-    },
-    onCompleted: () => setIsCreating(false)
-  })
+    try {
+      setLoading(true);
+      const { data } = await apolloClient.query({
+        query: GET_CHATS,
+        fetchPolicy: "network-only",
+      });
+      setChats(data.chats || []);
+    } catch (err) {
+      console.error("Error loading chats:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateChat = async () => {
-    if (isCreating) return
-    setIsCreating(true)
+    const user = nhost.auth.getUser();
+    if (!user) return;
+
     try {
-      await createChat({
-        variables: { title: `New Chat ${new Date().toLocaleTimeString()}` }
-      })
-    } catch (e) {
-      logError('Error creating chat (catch)', e)
-      setIsCreating(false)
+      const { data } = await apolloClient.mutate({
+        mutation: CREATE_CHAT,
+        variables: { user_id: user.id },
+      });
+
+      const newChat = data.insert_chats_one;
+      setChats((prev) => [newChat, ...prev]);
+      onSelectChat(newChat.id);
+    } catch (err) {
+      console.error("Error creating chat:", err);
     }
-  }
+  };
 
-  const getPreviewText = (chat: Chat) => {
-    const last = chat.latest_message?.[0]
-    if (!last) return chat.title || 'New chat'
-    return last.text.length > 50 ? last.text.slice(0, 50) + '…' : last.text
-  }
+  // Subscribe to live updates
+  useSubscription(SUBSCRIBE_TO_CHATS, {
+    onData: ({ data }) => {
+      if (data.data?.chats) setChats(data.data.chats);
+    },
+  });
 
-  const getTimeAgo = (iso: string) => {
-    const date = new Date(iso)
-    const diff = Math.floor((Date.now() - date.getTime()) / 1000)
-    if (diff < 60) return 'Just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`
-    return date.toLocaleDateString()
-  }
+  useEffect(() => {
+    fetchChats();
+  }, []);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 border-r border-gray-200 min-w-[280px] max-w-xs">
-      <div className="p-4 border-b border-gray-200">
+    <div className="flex flex-col p-4 border-r border-gray-200 h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Chats</h2>
         <button
           onClick={handleCreateChat}
-          disabled={isCreating}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>{isCreating ? 'Creating...' : 'New Chat'}</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {loading && <div className="p-4 text-sm text-gray-500">Loading…</div>}
-        {error && (
-          <div className="p-4 text-red-600 text-sm">Unable to load chats. Please try again later.</div>
-        )}
-        {!loading && !error && (data?.chats?.length ?? 0) === 0 && (
-          <div className="p-4 text-center text-gray-500">
-            <p className="text-xs">Create your first chat to get started</p>
-          </div>
-        )}
-
-        {data?.chats?.map((chat: Chat) => (
-          <button
-            key={chat.id}
-            onClick={() => onSelectChat(chat.id)}
-            className={clsx(
-              'w-full text-left p-3 rounded-lg transition-colors',
-              selectedChatId === chat.id
-                ? 'bg-blue-100 border border-blue-200'
-                : 'hover:bg-white border border-transparent'
-            )}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {getPreviewText(chat)}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">{getTimeAgo(chat.created_at)}</p>
+      {loading ? (
+        <p>Loading...</p>
+      ) : chats.length === 0 ? (
+        <p className="text-gray-500 text-sm">No chats yet</p>
+      ) : (
+        <ul className="space-y-2 overflow-y-auto">
+          {chats.map((chat) => (
+            <li
+              key={chat.id}
+              onClick={() => onSelectChat(chat.id)}
+              className={clsx(
+                "p-2 rounded-lg cursor-pointer flex flex-col hover:bg-gray-100",
+                selectedChatId === chat.id && "bg-blue-100 font-semibold"
+              )}
+            >
+              <div className="flex items-center space-x-2">
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">{new Date(chat.created_at).toLocaleString()}</span>
               </div>
-              <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
-            </div>
-          </button>
-        ))}
-      </div>
+              {chat.latest_message && chat.latest_message.length > 0 && (
+                <p className="text-xs text-gray-500 truncate mt-1">
+                  {chat.latest_message[0].text}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
-  )
-}
+  );
+};
