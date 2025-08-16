@@ -1,11 +1,11 @@
 // src/components/chat/ChatList.tsx
 import React, { useEffect, useState } from "react";
 import { Plus, MessageCircle } from "lucide-react";
-import { apolloClient } from "../lib/apollo";
-import { nhost } from "../lib/nhost";
+import { apolloClient } from "/home/project/src/lib/apollo.ts";
+import { nhost } from "/home/project/src/lib/nhost.ts";
 import { gql, useSubscription } from "@apollo/client";
 import clsx from "clsx";
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "../../queries";
+import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "/home/project/src/graphql/queries.ts";
 
 // Types
 interface Chat {
