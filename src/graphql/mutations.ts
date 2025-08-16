@@ -1,9 +1,9 @@
 import { gql } from '@apollo/client'
 
-// Create a new chat with user_id
+// Create a new chat without user_id (Hasura sets it via session)
 export const CREATE_CHAT = gql`
-  mutation CreateChat($user_id: uuid!) {
-    insert_chats_one(object: { user_id: $user_id }) {
+  mutation CreateChat {
+    insert_chats_one(object: {}) {
       id
       created_at
     }
