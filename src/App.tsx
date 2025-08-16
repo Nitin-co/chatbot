@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { NhostProvider } from '@nhost/react'
 import { ApolloProvider } from '@apollo/client'
 import { useAuthenticationStatus } from '@nhost/react'
+
 import { nhost } from '/home/project/src/lib/nhost.ts'
 import { apolloClient } from '/home/project/src/lib/apollo.ts'
 import { Layout } from '/home/project/src/components/Layout.tsx'
@@ -18,7 +19,7 @@ const EmailVerificationPage: React.FC = () => {
           Your email has been successfully verified. You can now sign in to your account.
         </p>
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => (window.location.href = '/')}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Go to Sign In
@@ -29,7 +30,7 @@ const EmailVerificationPage: React.FC = () => {
 }
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuthenticationStatus()
+  const { isAuthenticated, isLoading, user } = useAuthenticationStatus()
 
   if (isLoading) {
     return (
@@ -39,18 +40,26 @@ const AppContent: React.FC = () => {
     )
   }
 
+  // Optional: require verified email before allowing app access
+  if (isAuthenticated && user && user.emailVerified === false) {
+    return <EmailVerificationPage />
+  }
+
   return (
     <Routes>
       <Route path="/email-verification" element={<EmailVerificationPage />} />
-      <Route path="/" element={
-        !isAuthenticated ? (
-          <AuthPage />
-        ) : (
-          <Layout>
-            <ChatPage />
-          </Layout>
-        )
-      } />
+      <Route
+        path="/"
+        element={
+          !isAuthenticated ? (
+            <AuthPage />
+          ) : (
+            <Layout>
+              <ChatPage />
+            </Layout>
+          )
+        }
+      />
     </Routes>
   )
 }
