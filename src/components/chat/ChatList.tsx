@@ -10,7 +10,7 @@ interface Chat {
   id: string
   created_at: string
   title: string | null
-  latest_message: Array<{
+  latest_message?: Array<{
     id: string
     text: string
     sender: 'user' | 'bot'
@@ -32,10 +32,11 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
 
   const { data, loading, error } = useQuery(GET_CHATS, {
     fetchPolicy: 'network-only',
-    onError: (err) => {
-      console.error('GraphQL error:', err)
-    }
+    errorPolicy: 'all'
   })
+
+  // Debug: log fetched chats
+  if (import.meta.env.DEV) console.log('Fetched chats:', data?.chats)
 
   const [createChat] = useMutation(CREATE_CHAT, {
     refetchQueries: [GET_CHATS],
@@ -91,13 +92,10 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-2">
         {loading && <div className="p-4 text-sm text-gray-500">Loading…</div>}
         {error && (
-          <div className="p-4 text-red-600 text-sm">
-            Unable to load chats. Please try again later.
-            <pre className="mt-2 text-xs text-gray-700">{JSON.stringify(error, null, 2)}</pre>
-          </div>
+          <div className="p-4 text-red-600 text-sm">Unable to load chats. Please try again later.</div>
         )}
         {!loading && !error && (data?.chats?.length ?? 0) === 0 && (
           <div className="p-4 text-center text-gray-500">
@@ -105,30 +103,28 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
           </div>
         )}
 
-        <div className="space-y-1 p-2">
-          {data?.chats?.map((chat: Chat) => (
-            <button
-              key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={clsx(
-                'w-full text-left p-3 rounded-lg transition-colors',
-                selectedChatId === chat.id
-                  ? 'bg-blue-100 border border-blue-200'
-                  : 'hover:bg-white border border-transparent'
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {getPreviewText(chat)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{getTimeAgo(chat.created_at)}</p>
-                </div>
-                <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
+        {data?.chats?.map((chat: Chat) => (
+          <button
+            key={chat.id}
+            onClick={() => onSelectChat(chat.id)}
+            className={clsx(
+              'w-full text-left p-3 rounded-lg transition-colors',
+              selectedChatId === chat.id
+                ? 'bg-blue-100 border border-blue-200'
+                : 'hover:bg-white border border-transparent'
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {getPreviewText(chat)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">{getTimeAgo(chat.created_at)}</p>
               </div>
-            </button>
-          ))}
-        </div>
+              <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   )
