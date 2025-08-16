@@ -38,9 +38,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
-
   useEffect(() => {
-    scrollToBottom()
+    const t = setTimeout(scrollToBottom, 100)
+      return () => clearTimeout(t)
   }, [data?.messages?.length])
 
   const handleSendMessage = async (text: string) => {
