@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useSignUpEmailPassword } from '@nhost/react'
+import { useSignUpEmailPassword, useAuthenticationStatus } from '@nhost/react'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
 interface SignUpFormProps {
@@ -11,10 +11,24 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const { signUpEmailPassword, isLoading, error } = useSignUpEmailPassword()
+  const { isAuthenticated } = useAuthenticationStatus()
+
+  // Redirect if already authenticated
+  if (isAuthenticated) {
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await signUpEmailPassword(email, password)
+    try {
+      const result = await signUpEmailPassword(email, password)
+      if (result.isSuccess) {
+        // Show success message for email verification
+        alert('Account created! Please check your email to verify your account.')
+      }
+    } catch (err) {
+      console.error('Sign up error:', err)
+    }
   }
 
   return (

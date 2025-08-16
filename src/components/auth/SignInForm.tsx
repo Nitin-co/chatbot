@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useSignInEmailPassword, useResetPassword } from '@nhost/react'
+import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 interface SignInFormProps {
@@ -14,10 +14,20 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
   const [resetEmail, setResetEmail] = useState('')
   const { signInEmailPassword, isLoading, error } = useSignInEmailPassword()
   const { resetPassword, isLoading: isResetting, isSuccess: resetSuccess, error: resetError } = useResetPassword()
+  const { isAuthenticated } = useAuthenticationStatus()
+
+  // Redirect if already authenticated
+  if (isAuthenticated) {
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await signInEmailPassword(email, password)
+    try {
+      await signInEmailPassword(email, password)
+    } catch (err) {
+      console.error('Sign in error:', err)
+    }
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {

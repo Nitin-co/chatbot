@@ -26,12 +26,11 @@ export const INSERT_MESSAGE = gql`
   }
 `
 
-// Send message to AI (Hasura Action)
-export const SEND_MESSAGE_ACTION = gql`
-  mutation SendMessage($chat_id: uuid!, $message: String!) {
-    sendMessage(chat_id: $chat_id, message: $message) {
-      success
-      message
+// Delete a chat
+export const DELETE_CHAT = gql`
+  mutation DeleteChat($chat_id: uuid!) {
+    delete_chats_by_pk(id: $chat_id) {
+      id
     }
   }
 `

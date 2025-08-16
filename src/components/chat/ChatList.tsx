@@ -1,68 +1,152 @@
-import React, { useEffect, useState } from "react";
-import { nhost } from "/home/project/src/graphql/queries.ts";
-import { gql } from "graphql-request";
-import { useAuthenticationStatus } from "@nhost/react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@apollo/client'
+import { Plus, MessageCircle, Trash2, Edit2 } from 'lucide-react'
+import { GET_CHATS } from '../../graphql/queries'
+import { CREATE_CHAT } from '../../graphql/mutations'
+import { useUserData } from '@nhost/react'
+import clsx from 'clsx'
 
-const GET_CHATS = gql`
-  query GetChats {
-    messages(order_by: { created_at: desc }, limit: 20) {
-      id
-      content
-      created_at
-      user {
-        id
-        displayName
+interface Chat {
+  id: string
+  created_at: string
+  messages: Array<{
+    id: string
+    text: string
+    sender: 'user' | 'bot'
+    created_at: string
+  }>
+}
+
+interface ChatListProps {
+  selectedChatId?: string
+  onSelectChat: (chatId: string) => void
+}
+
+export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
+  const user = useUserData()
+  const queryClient = useQueryClient()
+  const [isCreating, setIsCreating] = useState(false)
+
+  const { data, loading, error, refetch } = useQuery(GET_CHATS, {
+    fetchPolicy: 'cache-and-network',
+    errorPolicy: 'all'
+  })
+
+  const [createChat] = useMutation(CREATE_CHAT, {
+    onCompleted: (data) => {
+      if (data?.insert_chats_one?.id) {
+        onSelectChat(data.insert_chats_one.id)
+        refetch()
       }
-    }
-  }
-`;
-
-export const ChatList: React.FC = () => {
-  const { isAuthenticated } = useAuthenticationStatus();
-  const [client] = useState(() => nhost.graphql);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["chats"],
-    queryFn: async () => {
-      const res = await client.request(GET_CHATS);
-      return res.messages;
+      setIsCreating(false)
     },
-    enabled: isAuthenticated,
-  });
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      refetch();
+    onError: (error) => {
+      console.error('Error creating chat:', error)
+      setIsCreating(false)
     }
-  }, [isAuthenticated, refetch]);
+  })
 
-  if (!isAuthenticated) {
-    return <p className="text-gray-500">Please log in to view chats.</p>;
+  const handleCreateChat = async () => {
+    if (!user?.id || isCreating) return
+    
+    setIsCreating(true)
+    try {
+      await createChat({
+        variables: {
+          user_id: user.id
+        }
+      })
+    } catch (error) {
+      console.error('Error creating chat:', error)
+      setIsCreating(false)
+    }
   }
 
-  if (isLoading) {
-    return <p className="text-gray-500">Loading chats...</p>;
+  const getPreviewText = (chat: Chat) => {
+    const lastMessage = chat.messages?.[0]
+    if (!lastMessage) return 'New chat'
+    return lastMessage.text.length > 50 
+      ? lastMessage.text.substring(0, 50) + '...'
+      : lastMessage.text
   }
 
-  if (error) {
-    return <p className="text-red-500">Error loading chats.</p>;
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    return date.toLocaleDateString()
+  }
+
+  if (loading && !data) {
+    return (
+      <div className="w-80 bg-gray-50 border-r border-gray-200 p-4">
+        <div className="animate-pulse space-y-3">
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-16 bg-gray-200 rounded"></div>
+          <div className="h-16 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-3 p-4">
-      {data?.map((msg: any) => (
-        <div
-          key={msg.id}
-          className="p-3 bg-white shadow rounded-lg border border-gray-200"
+    <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
+      <div className="p-4 border-b border-gray-200">
+        <button
+          onClick={handleCreateChat}
+          disabled={isCreating}
+          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <p className="text-sm font-semibold">{msg.user.displayName}</p>
-          <p className="text-gray-700">{msg.content}</p>
-          <span className="text-xs text-gray-400">
-            {new Date(msg.created_at).toLocaleTimeString()}
-          </span>
-        </div>
-      ))}
+          <Plus className="h-4 w-4" />
+          <span>{isCreating ? 'Creating...' : 'New Chat'}</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {error && (
+          <div className="p-4 text-red-600 text-sm">
+            Error loading chats. Please try again.
+          </div>
+        )}
+
+        {data?.chats?.length === 0 ? (
+          <div className="p-4 text-center text-gray-500">
+            <MessageCircle className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm">No chats yet</p>
+            <p className="text-xs">Create your first chat to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-1 p-2">
+            {data?.chats?.map((chat: Chat) => (
+              <button
+                key={chat.id}
+                onClick={() => onSelectChat(chat.id)}
+                className={clsx(
+                  'w-full text-left p-3 rounded-lg transition-colors',
+                  selectedChatId === chat.id
+                    ? 'bg-blue-100 border border-blue-200'
+                    : 'hover:bg-white border border-transparent'
+                )}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {getPreviewText(chat)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {getTimeAgo(chat.created_at)}
+                    </p>
+                  </div>
+                  <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-  );
-};
+  )
+}
