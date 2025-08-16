@@ -1,13 +1,15 @@
 import { gql } from '@apollo/client'
 
 // Get all chats with latest message preview
+import { gql } from '@apollo/client'
+
 export const GET_CHATS = gql`
   query GetChats {
     chats(order_by: { created_at: desc }) {
       id
       title
       created_at
-      latest_message: messages(order_by: { created_at: desc }, limit: 1) {
+      latest_message(limit: 1, order_by: { created_at: desc }) {
         id
         text
         sender
