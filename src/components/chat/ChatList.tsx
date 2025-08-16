@@ -1,10 +1,12 @@
-import { useQuery, useMutation, gql } from "@apollo/client";
-import { useState } from "react";
-import { nhost } from "/home/project/src/lib/nhost.ts";
+import React, { useEffect, useState } from "react";
+import { nhost } from "/home/project/src/graphql/queries.ts";
+import { gql } from "graphql-request";
+import { useAuthenticationStatus } from "@nhost/react";
+import { useQuery } from "@tanstack/react-query";
 
-const GET_MESSAGES = gql`
-  query GetMessages {
-    messages(order_by: { created_at: asc }) {
+const GET_CHATS = gql`
+  query GetChats {
+    messages(order_by: { created_at: desc }, limit: 20) {
       id
       content
       created_at
@@ -16,73 +18,51 @@ const GET_MESSAGES = gql`
   }
 `;
 
-const SEND_MESSAGE = gql`
-  mutation SendMessage($content: String!, $user_id: uuid!) {
-    insert_messages_one(object: { content: $content, user_id: $user_id }) {
-      id
-      content
-      created_at
-    }
-  }
-`;
+export const ChatList: React.FC = () => {
+  const { isAuthenticated } = useAuthenticationStatus();
+  const [client] = useState(() => nhost.graphql);
 
-export default function ChatList() {
-  const { data, loading, error } = useQuery(GET_MESSAGES, {
-    fetchPolicy: "cache-and-network",
-    pollInterval: 2000, // keep refreshing
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["chats"],
+    queryFn: async () => {
+      const res = await client.request(GET_CHATS);
+      return res.messages;
+    },
+    enabled: isAuthenticated,
   });
 
-  const [sendMessage] = useMutation(SEND_MESSAGE);
-  const [newMessage, setNewMessage] = useState("");
-
-  const handleSend = async () => {
-    if (!newMessage.trim()) return;
-
-    const user = nhost.auth.getUser();
-    if (!user) {
-      alert("You must be logged in to send messages");
-      return;
+  useEffect(() => {
+    if (isAuthenticated) {
+      refetch();
     }
+  }, [isAuthenticated, refetch]);
 
-    try {
-      await sendMessage({
-        variables: { content: newMessage, user_id: user.id },
-        refetchQueries: [{ query: GET_MESSAGES }],
-      });
-      setNewMessage("");
-    } catch (err) {
-      console.error("Error sending message:", err);
-    }
-  };
+  if (!isAuthenticated) {
+    return <p className="text-gray-500">Please log in to view chats.</p>;
+  }
 
-  if (loading) return <p>Loading messages...</p>;
-  if (error) return <p>Error: {error.message}</p>;
+  if (isLoading) {
+    return <p className="text-gray-500">Loading chats...</p>;
+  }
+
+  if (error) {
+    return <p className="text-red-500">Error loading chats.</p>;
+  }
 
   return (
-    <div className="p-4">
-      <div className="space-y-2 mb-4">
-        {data?.messages.map((msg: any) => (
-          <div key={msg.id} className="p-2 bg-gray-100 rounded">
-            <strong>{msg.user?.displayName || "Anonymous"}:</strong> {msg.content}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          className="flex-1 border p-2 rounded"
-          placeholder="Type a message..."
-        />
-        <button
-          onClick={handleSend}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
+    <div className="space-y-3 p-4">
+      {data?.map((msg: any) => (
+        <div
+          key={msg.id}
+          className="p-3 bg-white shadow rounded-lg border border-gray-200"
         >
-          Send
-        </button>
-      </div>
+          <p className="text-sm font-semibold">{msg.user.displayName}</p>
+          <p className="text-gray-700">{msg.content}</p>
+          <span className="text-xs text-gray-400">
+            {new Date(msg.created_at).toLocaleTimeString()}
+          </span>
+        </div>
+      ))}
     </div>
   );
-}
+};
