@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useQuery, useMutation } from '@apollo/client'
+import React, { useEffect, useRef, useState } from 'react'
+import { useMutation, useSubscription } from '@apollo/client'
 import { Loader } from 'lucide-react'
-import { GET_CHAT_MESSAGES } from '/home/project/src/graphql/queries.ts'
-import { INSERT_MESSAGE } from '/home/project/src/graphql/mutations.ts'
+
+import { SUBSCRIBE_TO_MESSAGES } from '/home/project/src/graphql/queries.ts'
+import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '/home/project/src/graphql/mutations.ts'
+import { MessageBubble } from './messageBubble'
+import { MessageInput } from './messageInput'
 
 interface Message {
   id: string
@@ -15,28 +18,20 @@ interface ChatViewProps {
   chatId: string
 }
 
-// Centralized error logger
 function logError(context: string, error: unknown) {
-  if (import.meta.env.DEV) {
-    console.error(`[${context}]`, error)
-  }
-  // Future: send error to monitoring service.
+  if (import.meta.env.DEV) console.error(`[${context}]`, error)
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isTyping, setIsTyping] = useState(false)
+  const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { data, loading, error, refetch } = useQuery(GET_CHAT_MESSAGES, {
-    variables: { chat_id: chatId },
-    fetchPolicy: 'cache-and-network',
-    onCompleted: (data) => {
-      setMessages(data?.messages || [])
-    }
+  const { data, loading, error } = useSubscription(SUBSCRIBE_TO_MESSAGES, {
+    variables: { chat_id: chatId }
   })
 
   const [insertMessage] = useMutation(INSERT_MESSAGE)
+  const [sendMessageAction] = useMutation(SEND_MESSAGE_ACTION)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,62 +39,27 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, isTyping])
-
-  useEffect(() => {
-    if (data?.messages) {
-      setMessages(data.messages)
-    }
-  }, [data])
-
-  const simulateBotResponse = async (userMessage: string) => {
-    setIsTyping(true)
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
-    // Simple bot responses for demo
-    const responses = [
-      "That's an interesting point! Can you tell me more about that?",
-      "I understand what you're saying. Here's what I think...",
-      "Thanks for sharing that with me. Let me help you with that.",
-      "That's a great question! Based on what you've told me...",
-      "I see. Have you considered looking at it from this perspective?",
-      "Interesting! That reminds me of something similar...",
-      "I appreciate you bringing that up. Here's my take on it...",
-      "That makes sense. Let me provide some additional context..."
-    ]
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-    try {
-      await insertMessage({
-        variables: {
-          chat_id: chatId,
-          text: randomResponse,
-          sender: 'bot'
-        }
-      })
-      await refetch()
-    } catch (error) {
-      logError('Error inserting bot message', error)
-    }
-    setIsTyping(false)
-  }
+  }, [data?.messages?.length])
 
   const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return
+    if (!text.trim() || isSending) return
+    setIsSending(true)
     try {
-      // Insert user message
+      // 1) Save user message
       await insertMessage({
-        variables: {
-          chat_id: chatId,
-          text: text.trim(),
-          sender: 'user'
-        }
+        variables: { chat_id: chatId, text: text.trim(), sender: 'user' }
       })
-      // Refresh messages
-      await refetch()
-      // Simulate bot response
-      await simulateBotResponse(text)
-    } catch (error) {
-      logError('Error sending message', error)
+
+      // 2) Trigger Hasura Action -> n8n -> OpenRouter -> inserts bot message
+      await sendMessageAction({
+        variables: { chat_id: chatId, text: text.trim() }
+      })
+      // No manual refetch needed — subscription will pick up the new bot row.
+    } catch (e) {
+      logError('Error sending message', e)
+      alert('Failed to send message. See console for details.')
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -119,21 +79,22 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-red-600">
           <p className="mb-2">Unable to load messages. Please try again later.</p>
-          <button
-            onClick={() => refetch()}
-            className="text-blue-600 hover:text-blue-500 text-sm"
-          >
-            Try again
-          </button>
         </div>
       </div>
     )
   }
 
+  const messages: Message[] = data?.messages ?? []
+
   return (
-    // ...rest of the ChatView rendering logic...
-    <div>
-      {/* ... */}
+    <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <MessageInput onSendMessage={handleSendMessage} disabled={isSending} />
     </div>
   )
 }
