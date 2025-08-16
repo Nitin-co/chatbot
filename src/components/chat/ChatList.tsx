@@ -22,12 +22,12 @@ interface ChatListProps {
   onSelectChat: (chatId: string) => void
 }
 
-// Custom error logger for future extensibility
+// Centralized error logger
 function logError(context: string, error: unknown) {
   if (import.meta.env.DEV) {
     console.error(`[${context}]`, error)
   }
-  // Extend here to report errors to a monitoring service
+  // Future: send error to monitoring service.
 }
 
 export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
