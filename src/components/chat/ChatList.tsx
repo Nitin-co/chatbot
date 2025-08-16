@@ -7,9 +7,17 @@ import clsx from "clsx";
 import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from "/home/project/src/graphql/queries.ts";
 
 // Types
+interface Message {
+  id: string;
+  text: string;
+  sender: string;
+  created_at: string;
+}
+
 interface Chat {
   id: string;
   created_at: string;
+  messages?: Message[];
 }
 
 interface ChatListProps {
@@ -42,7 +50,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         mutation: CREATE_CHAT,
         variables: {},
       });
-      const newChat: Chat = data.insert_chats_one;
+      const newChat: Chat = { ...data.insert_chats_one, messages: [] };
       setChats((prev) => [newChat, ...prev]);
       onSelectChat(newChat.id);
     } catch (err) {
@@ -79,21 +87,37 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         <p className="text-gray-500 text-sm">No chats yet</p>
       ) : (
         <ul className="space-y-2 overflow-y-auto">
-          {chats.map((chat) => (
-            <li
-              key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={clsx(
-                "p-2 rounded-lg cursor-pointer flex items-center space-x-2 hover:bg-gray-100",
-                selectedChatId === chat.id && "bg-blue-100 font-semibold"
-              )}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {new Date(chat.created_at).toLocaleString()}
-              </span>
-            </li>
-          ))}
+          {chats.map((chat) => {
+            const lastMsg = chat.messages?.[chat.messages.length - 1];
+            return (
+              <li
+                key={chat.id}
+                onClick={() => onSelectChat(chat.id)}
+                className={clsx(
+                  "p-2 rounded-lg cursor-pointer flex flex-col hover:bg-gray-100",
+                  selectedChatId === chat.id && "bg-blue-100 font-semibold"
+                )}
+              >
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {lastMsg
+                      ? lastMsg.text
+                      : new Date(chat.created_at).toLocaleString()}
+                  </span>
+                </div>
+                {lastMsg && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {lastMsg.sender === "user" ? "You" : "Bot"} ·{" "}
+                    {new Date(lastMsg.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
