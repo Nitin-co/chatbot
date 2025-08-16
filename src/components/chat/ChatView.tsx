@@ -11,9 +11,10 @@ import { MessageInput } from "./MessageInput"
 interface Message {
   id: string
   text: string
-  sender: 'user' | 'bot'
+  sender: string   // still display as "user" / "bot" where needed
   created_at: string
 }
+
 
 interface ChatViewProps {
   chatId: string
