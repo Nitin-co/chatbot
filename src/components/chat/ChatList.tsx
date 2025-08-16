@@ -48,15 +48,17 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
       setIsCreating(false)
     },
     onError: (error) => {
-      logError('Error creating chat', error)
-      if (
-        (error as any)?.graphQLErrors &&
-        (error as any).graphQLErrors.length > 0
-      ) {
-        alert((error as any).graphQLErrors[0].message)
-      }
-      setIsCreating(false)
-    }
+  logError('Error creating chat', error);
+  // Log detailed error info to console
+  if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+    console.error('GraphQL Error:', error.graphQLErrors[0]);
+    alert('GraphQL Error: ' + error.graphQLErrors[0].message);
+  } else {
+    console.error('Apollo Error:', error);
+    alert('Apollo Error: ' + error.message);
+  }
+  setIsCreating(false);
+}
   })
 
   const handleCreateChat = async () => {
