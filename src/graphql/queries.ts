@@ -44,7 +44,7 @@ export const CREATE_CHAT = gql`
 
 export const SUBSCRIBE_TO_MESSAGES = gql`
   subscription SubscribeToMessages($chatId: uuid!) {
-    messages(where: { chat_id: { _eq: $chatId } }, order_by: { created_at: desc }) {
+    messages(where: { chat_id: { _eq: $chatId } }, order_by: { created_at: asc }) {
       id
       text
       sender
