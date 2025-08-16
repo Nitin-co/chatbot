@@ -1,33 +1,30 @@
 import React, { useState } from 'react'
-import { useSignUpEmailPassword, useAuthenticationStatus } from '@nhost/react'
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { useSignUpEmailPassword } from '@nhost/react'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
-interface SignUpFormProps {
-  onToggleMode: () => void
+// Centralized error logger
+function logError(context: string, error: unknown) {
+  if (import.meta.env.DEV) {
+    console.error(`[${context}]`, error)
+  }
+  // Future: send error to monitoring service.
 }
 
-export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
+export default function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const { signUpEmailPassword, isLoading, error } = useSignUpEmailPassword()
-  const { isAuthenticated } = useAuthenticationStatus()
-
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return null
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const result = await signUpEmailPassword(email, password)
       if (result.isSuccess) {
-        // Show success message for email verification
         alert('Account created! Please check your email to verify your account.')
       }
     } catch (err) {
-      console.error('Sign up error:', err)
+      logError('Sign up error', err)
     }
   }
 
@@ -97,30 +94,18 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
               </div>
             </div>
           </div>
-
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-sm text-red-600">{error.message}</p>
+              <p className="text-sm text-red-600">Unable to sign up. Please check your details and try again.</p>
             </div>
           )}
-
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating account...' : 'Sign up'}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={onToggleMode}
-              className="text-blue-600 hover:text-blue-500 text-sm font-medium"
-            >
-              Already have an account? Sign in
+              {isLoading ? 'Signing up...' : 'Sign up'}
             </button>
           </div>
         </form>
