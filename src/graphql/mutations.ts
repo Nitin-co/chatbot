@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client'
+import { gql } from '/home/project/src/lib/apollo.ts'
 
 // Create a new chat with user_id
 export const CREATE_CHAT = gql`
