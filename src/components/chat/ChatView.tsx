@@ -1,9 +1,10 @@
 // src/components/chat/ChatView.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { apolloClient } from "/home/project/src/lib/apollo.ts";
-import { gql } from "@apollo/client";
 import { nhost } from "/home/project/src/lib/nhost.ts";
 import { MessageInput } from "/home/project/src/components/chat/MessageInput.tsx";
+import { SEND_MESSAGE_ACTION } from "/home/project/src/graphql/mutations.ts";
+import { gql } from "@apollo/client";
 
 const GET_MESSAGES = gql`
   query GetMessages($chat_id: uuid!) {
@@ -12,15 +13,6 @@ const GET_MESSAGES = gql`
       text
       sender
       created_at
-    }
-  }
-`;
-
-const SEND_MESSAGE_ACTION = gql`
-  mutation SendMessage($chat_id: uuid!, $text: String!) {
-    sendMessage(chat_id: $chat_id, text: $text) {
-      success
-      message
     }
   }
 `;
@@ -75,7 +67,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
         mutation: SEND_MESSAGE_ACTION,
         variables: {
           chat_id: chatId,
-          text: text,
+          message: text,
         },
       });
 
