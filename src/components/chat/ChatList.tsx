@@ -31,9 +31,6 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const [loading, setLoading] = useState(false);
 
   const fetchChats = async () => {
-    const user = nhost.auth.getUser();
-    if (!user) return;
-
     try {
       setLoading(true);
       const { data } = await apolloClient.query({
@@ -93,7 +90,9 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
       ) : (
         <ul className="space-y-2 overflow-y-auto">
           {chats.map((chat) => {
-            const latestMsg = chat.messages?.[0];
+            // Use the last message instead of messages[0]
+            const lastMsg = chat.messages?.[chat.messages.length - 1];
+
             return (
               <li
                 key={chat.id}
@@ -106,15 +105,15 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
                 <div className="flex items-center space-x-2">
                   <MessageCircle className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {latestMsg
-                      ? latestMsg.text
+                    {lastMsg
+                      ? lastMsg.text
                       : new Date(chat.created_at).toLocaleString()}
                   </span>
                 </div>
-                {latestMsg && (
+                {lastMsg && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {latestMsg.sender === "user" ? "You" : "Bot"} ·{" "}
-                    {new Date(latestMsg.created_at).toLocaleTimeString([], {
+                    {lastMsg.sender === "user" ? "You" : "Bot"} ·{" "}
+                    {new Date(lastMsg.created_at).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
