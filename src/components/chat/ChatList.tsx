@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
-import { Plus, MessageCircle, Trash2, Edit2 } from 'lucide-react'
+import { Plus, MessageCircle } from 'lucide-react'
 import { GET_CHATS } from '/home/project/src/graphql/queries.ts'
 import { CREATE_CHAT } from '/home/project/src/graphql/mutations.ts'
 import { useUserData } from '/home/project/src/lib/nhost.ts'
@@ -22,6 +22,14 @@ interface ChatListProps {
   onSelectChat: (chatId: string) => void
 }
 
+// Custom error logger for future extensibility
+function logError(context: string, error: unknown) {
+  if (import.meta.env.DEV) {
+    console.error(`[${context}]`, error)
+  }
+  // Extend here to report errors to a monitoring service
+}
+
 export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
   const user = useUserData()
   const [isCreating, setIsCreating] = useState(false)
@@ -40,14 +48,14 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
       setIsCreating(false)
     },
     onError: (error) => {
-      console.error('Error creating chat:', error)
+      logError('Error creating chat', error)
       setIsCreating(false)
     }
   })
 
   const handleCreateChat = async () => {
     if (!user?.id || isCreating) return
-    
+
     setIsCreating(true)
     try {
       await createChat({
@@ -56,7 +64,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         }
       })
     } catch (error) {
-      console.error('Error creating chat:', error)
+      logError('Error creating chat', error)
       setIsCreating(false)
     }
   }
@@ -64,7 +72,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const getPreviewText = (chat: Chat) => {
     const lastMessage = chat.messages?.[0]
     if (!lastMessage) return 'New chat'
-    return lastMessage.text.length > 50 
+    return lastMessage.text.length > 50
       ? lastMessage.text.substring(0, 50) + '...'
       : lastMessage.text
   }
@@ -72,10 +80,10 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
-    
-    if (diffInHours < 1) return 'Just now'
-    if (diffInHours < 24) return `${diffInHours}h ago`
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`
     return date.toLocaleDateString()
   }
 
@@ -103,18 +111,14 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
           <span>{isCreating ? 'Creating...' : 'New Chat'}</span>
         </button>
       </div>
-
       <div className="flex-1 overflow-y-auto">
         {error && (
           <div className="p-4 text-red-600 text-sm">
-            Error loading chats. Please try again.
+            Unable to load chats. Please try again later.
           </div>
         )}
-
         {data?.chats?.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            <MessageCircle className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">No chats yet</p>
             <p className="text-xs">Create your first chat to get started</p>
           </div>
         ) : (
