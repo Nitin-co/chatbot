@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@apollo/client'
 import { Plus, MessageCircle } from 'lucide-react'
 import { GET_CHATS } from '/home/project/src/graphql/queries.ts'
 import { CREATE_CHAT } from '/home/project/src/graphql/mutations.ts'
-import { useUserData } from '/home/project/src/lib/nhost.ts'
+import { useUserData } from '@nhost/react'
 import clsx from 'clsx'
 
 interface Chat {
