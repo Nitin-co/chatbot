@@ -16,13 +16,11 @@ const GET_MESSAGES = gql`
   }
 `;
 
-const INSERT_MESSAGE = gql`
-  mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
-    insert_messages_one(object: { chat_id: $chat_id, text: $text, sender: $sender }) {
-      id
-      text
-      sender
-      created_at
+const SEND_MESSAGE_ACTION = gql`
+  mutation SendMessage($chat_id: uuid!, $text: String!) {
+    sendMessage(chat_id: $chat_id, text: $text) {
+      success
+      message
     }
   }
 `;
@@ -73,19 +71,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
     }
 
     try {
-      const { data } = await apolloClient.mutate({
-        mutation: INSERT_MESSAGE,
+      await apolloClient.mutate({
+        mutation: SEND_MESSAGE_ACTION,
         variables: {
           chat_id: chatId,
           text: text,
-          sender: "user", // Must match messages table column
         },
       });
 
-      if (data?.insert_messages_one) {
-        setMessages((prev) => [...prev, data.insert_messages_one]);
-        scrollToBottom();
-      }
+      // Refresh messages after sending
+      await fetchMessages();
     } catch (err: any) {
       console.error("Error sending message:", err);
       if (err.graphQLErrors) console.error(err.graphQLErrors);
