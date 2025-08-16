@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation } from '@apollo/client''
+import { useQuery, useMutation } from '@apollo/client'
 import { Plus, MessageCircle, Trash2, Edit2 } from 'lucide-react'
 import { GET_CHATS } from '/home/project/src/graphql/queries.ts'
 import { CREATE_CHAT } from '/home/project/src/graphql/mutations.ts'
