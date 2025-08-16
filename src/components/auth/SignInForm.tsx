@@ -1,17 +1,22 @@
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
-interface SignInFormProps {
-  onToggleMode: () => void
+// Centralized error logger
+function logError(context: string, error: unknown) {
+  if (import.meta.env.DEV) {
+    console.error(`[${context}]`, error)
+  }
+  // Future: send error to monitoring service.
 }
 
-export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
+export default function SignInForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
+
   const { signInEmailPassword, isLoading, error } = useSignInEmailPassword()
   const { resetPassword, isLoading: isResetting, isSuccess: resetSuccess, error: resetError } = useResetPassword()
   const { isAuthenticated } = useAuthenticationStatus()
@@ -26,13 +31,17 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
     try {
       await signInEmailPassword(email, password)
     } catch (err) {
-      console.error('Sign in error:', err)
+      logError('Sign in error', err)
     }
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    await resetPassword(resetEmail)
+    try {
+      await resetPassword(resetEmail)
+    } catch (err) {
+      logError('Reset password error', err)
+    }
   }
 
   if (showForgotPassword) {
@@ -47,7 +56,6 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
               Enter your email address and we'll send you a link to reset your password
             </p>
           </div>
-          
           {resetSuccess ? (
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <p className="text-sm text-green-600">
@@ -82,26 +90,23 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
                   />
                 </div>
               </div>
-
               {resetError && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                  <p className="text-sm text-red-600">{resetError.message}</p>
+                  <p className="text-sm text-red-600">Unable to reset password. Please try again.</p>
                 </div>
               )}
-
               <div className="space-y-3">
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isResetting ? 'Sending...' : 'Send reset email'}
+                  {isResetting ? 'Sending...' : 'Send reset link'}
                 </button>
-                
                 <button
                   type="button"
+                  className="w-full flex justify-center py-2 px-4 text-sm text-blue-600 hover:text-blue-500"
                   onClick={() => setShowForgotPassword(false)}
-                  className="w-full text-center text-blue-600 hover:text-blue-500 text-sm font-medium"
                 >
                   Back to sign in
                 </button>
@@ -121,7 +126,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
             Sign in to your account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Access your AI chatbot conversations
+            Welcome back! Log in to continue
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -178,37 +183,27 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onToggleMode }) => {
               </div>
             </div>
           </div>
-
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-sm text-red-600">{error.message}</p>
+              <p className="text-sm text-red-600">Unable to sign in. Please check your credentials and try again.</p>
             </div>
           )}
-
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:text-blue-500 focus:outline-none"
+              onClick={() => setShowForgotPassword(true)}
+            >
+              Forgot password?
+            </button>
+          </div>
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-
-          <div className="text-center space-y-2">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(true)}
-              className="text-blue-600 hover:text-blue-500 text-sm font-medium block w-full"
-            >
-              Forgot your password?
-            </button>
-            <button
-              type="button"
-              onClick={onToggleMode}
-              className="text-blue-600 hover:text-blue-500 text-sm font-medium block w-full"
-            >
-              Don't have an account? Sign up
             </button>
           </div>
         </form>
