@@ -27,7 +27,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { data, loading, error } = useSubscription(SUBSCRIBE_TO_MESSAGES, {
-    variables: { chat_id: chatId }
+    variables: { chat_id: chatId },
+    fetchPolicy: 'network-only'
   })
 
   const [insertMessage] = useMutation(INSERT_MESSAGE)
@@ -47,12 +48,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
     try {
       const cleaned = text.trim()
 
-      // 1) Save user message
+      // Save user message
       await insertMessage({
         variables: { chat_id: chatId, text: cleaned, sender: 'user' }
       })
 
-      // 2) Trigger Hasura Action -> n8n -> OpenRouter -> inserts bot message
+      // Trigger bot action
       await sendMessageAction({
         variables: { chat_id: chatId, text: cleaned }
       })
