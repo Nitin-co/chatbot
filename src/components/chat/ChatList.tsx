@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { Plus, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
@@ -32,9 +32,14 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const [isCreating, setIsCreating] = useState(false)
 
   const { data, loading, error } = useQuery(GET_CHATS, {
-    fetchPolicy: 'cache-and-network',
-    errorPolicy: 'all'
+    fetchPolicy: 'network-only', // force network fetch
+    errorPolicy: 'all',
   })
+
+  useEffect(() => {
+    console.log('ChatList data:', data)
+    if (error) console.error('ChatList GraphQL error:', error)
+  }, [data, error])
 
   const [createChat] = useMutation(CREATE_CHAT, {
     refetchQueries: [GET_CHATS],
@@ -63,7 +68,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   }
 
   const getPreviewText = (chat: Chat) => {
-    const last = chat.latest_message?.[0] // updated to latest_message
+    const last = chat.latest_message?.[0]
     if (!last) return chat.title || 'New chat'
     return last.text.length > 50 ? last.text.slice(0, 50) + '…' : last.text
   }
@@ -93,7 +98,9 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
       <div className="flex-1 overflow-y-auto">
         {loading && <div className="p-4 text-sm text-gray-500">Loading…</div>}
         {error && (
-          <div className="p-4 text-red-600 text-sm">Unable to load chats. Please try again later.</div>
+          <div className="p-4 text-red-600 text-sm">
+            Unable to load chats. Please check console for GraphQL errors.
+          </div>
         )}
         {!loading && !error && (data?.chats?.length ?? 0) === 0 && (
           <div className="p-4 text-center text-gray-500">
