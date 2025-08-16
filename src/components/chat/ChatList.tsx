@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@apollo/client'
+import { useQuery, useMutation, useQueryClient } from '/home/project/src/lib/apollo.ts'
 import { Plus, MessageCircle, Trash2, Edit2 } from 'lucide-react'
-import { GET_CHATS } from '../../graphql/queries'
-import { CREATE_CHAT } from '../../graphql/mutations'
-import { useUserData } from '@nhost/react'
+import { GET_CHATS } from '/home/project/src/graphql/queries.ts'
+import { CREATE_CHAT } from '/home/project/src/graphql/mutations.ts'
+import { useUserData } from '/home/project/src/lib/nhost.ts'
 import clsx from 'clsx'
 
 interface Chat {
