@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useMutation, useSubscription } from '@apollo/client'
 import { Loader } from 'lucide-react'
 
-import { SUBSCRIBE_TO_MESSAGES } from '/home/project/src/graphql/queries.ts'
-import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '/home/project/src/graphql/mutations.ts'
+import { SUBSCRIBE_TO_MESSAGES } from '../graphql/queries'
+import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '../graphql/mutations'
 import { MessageBubble } from './MessageBubble'
 import { MessageInput } from './MessageInput'
 
@@ -45,16 +45,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
     if (!text.trim() || isSending) return
     setIsSending(true)
     try {
+      const cleaned = text.trim()
+
       // 1) Save user message
       await insertMessage({
-        variables: { chat_id: chatId, text: text.trim(), sender: 'user' }
+        variables: { chat_id: chatId, text: cleaned, sender: 'user' }
       })
 
       // 2) Trigger Hasura Action -> n8n -> OpenRouter -> inserts bot message
       await sendMessageAction({
-        variables: { chat_id: chatId, text: text.trim() }
+        variables: { chat_id: chatId, text: cleaned }
       })
-      // No manual refetch needed — subscription will pick up the new bot row.
     } catch (e) {
       logError('Error sending message', e)
       alert('Failed to send message. See console for details.')
