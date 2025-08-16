@@ -4,8 +4,8 @@ import { Loader } from 'lucide-react'
 
 import { SUBSCRIBE_TO_MESSAGES } from '/home/project/src/graphql/queries.ts'
 import { INSERT_MESSAGE, SEND_MESSAGE_ACTION } from '/home/project/src/graphql/mutations.ts'
-import { MessageBubble } from './messageBubble'
-import { MessageInput } from './messageInput'
+import { MessageBubble } from './MessageBubble'
+import { MessageInput } from './MessageInput'
 
 interface Message {
   id: string
