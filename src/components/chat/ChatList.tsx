@@ -42,6 +42,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     errorPolicy: 'all',
     fetchPolicy: 'cache-and-network',
+    skip: !token, // skip until token exists
   })
 
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
@@ -63,7 +64,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   })
 
   // Subscribe to live updates only if token exists
-  useSubscription(token ? SUBSCRIBE_TO_CHATS : null, {
+  useSubscription(SUBSCRIBE_TO_CHATS, {
+    skip: !token, // ⚡ key fix here
     onData: ({ data: subscriptionData }) => {
       if (subscriptionData.data?.chats) {
         setChats(subscriptionData.data.chats)
