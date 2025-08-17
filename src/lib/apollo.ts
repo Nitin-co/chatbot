@@ -1,4 +1,3 @@
-// apollo.ts
 import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
@@ -8,14 +7,14 @@ import { nhost } from './nhost'
 
 let wsClient: Client | null = null
 
-// Create or recreate the WebSocket client
+// Create (or recreate) WebSocket client
 const getWsClient = () => {
   if (wsClient) return wsClient
 
   wsClient = createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
-    lazy: true, // connect only when needed
-    retryAttempts: Infinity, // auto-retry on disconnect
+    lazy: true,
+    retryAttempts: Infinity,
     connectionParams: async () => {
       const token = await nhost.auth.getAccessToken()
       return {
@@ -36,15 +35,12 @@ const getWsClient = () => {
   return wsClient
 }
 
-// WebSocket link
 const wsLink = new GraphQLWsLink(getWsClient())
 
-// HTTP link for queries/mutations
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_HASURA_GRAPHQL_URL!,
 })
 
-// Auth link for attaching headers
 const authLink = setContext(async (_, { headers }) => {
   const token = await nhost.auth.getAccessToken()
   return {
@@ -55,7 +51,6 @@ const authLink = setContext(async (_, { headers }) => {
   }
 })
 
-// Split link between queries/mutations (HTTP) and subscriptions (WS)
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query)
@@ -65,7 +60,6 @@ const splitLink = split(
   authLink.concat(httpLink)
 )
 
-// Apollo Client
 export const apolloClient = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
@@ -75,7 +69,7 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// Reconnect WS when auth state changes
+// Reconnect WS on auth change
 nhost.auth.onAuthStateChanged(() => {
   if (wsClient) {
     console.log('[WS] Auth changed, reconnecting...')
