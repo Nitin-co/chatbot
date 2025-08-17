@@ -7,9 +7,11 @@ import './index.css';
 import { apolloClient } from './lib/apollo.ts'; // ✅ Import our client
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ApolloProvider client={apolloClient}>
-      <App />
-    </ApolloProvider>
-  </StrictMode>
+  <React.StrictMode>
+    <NhostProvider nhost={nhost}>
+      <ApolloProvider client={apolloClient}>
+        <App />
+      </ApolloProvider>
+    </NhostProvider>
+  </React.StrictMode>
 );
