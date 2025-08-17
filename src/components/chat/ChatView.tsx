@@ -1,8 +1,7 @@
-// /home/project/src/components/chat/ChatView.tsx
 import React, { useEffect, useState } from 'react'
 import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
-import clsx from 'clsx'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
+import clsx from 'clsx'
 import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
 import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
 import { nhost } from '/home/project/src/lib/nhost'
@@ -27,17 +26,17 @@ interface ChatViewProps {
 
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
-  const [tokenReady, setTokenReady] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
+  const [subError, setSubError] = useState(false)
 
-  // Fetch token & listen for auth changes
   useEffect(() => {
     const fetchToken = async () => {
       try {
         const t = await nhost.auth.getAccessToken()
-        setTokenReady(!!t)
+        setToken(t)
       } catch (err) {
         console.error('Token fetch error:', err)
-        setTokenReady(false)
+        setToken(null)
       }
     }
     fetchToken()
@@ -45,18 +44,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return () => unsubscribe()
   }, [])
 
-  // Query chats
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
-    skip: !tokenReady,
+    skip: !token,
     fetchPolicy: 'cache-and-network',
     errorPolicy: 'all',
   })
 
-  // Mutation: create chat
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
-    onCompleted: (res) => {
-      if (res?.insert_chats_one) {
-        const newChat = { ...res.insert_chats_one, messages: [] }
+    onCompleted: (data) => {
+      if (data?.insert_chats_one) {
+        const newChat = { ...data.insert_chats_one, messages: [] }
         setChats(prev => [newChat, ...prev])
         onSelectChat?.(newChat.id)
       }
@@ -64,24 +61,31 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error creating chat:', err),
   })
 
-  // Mutation: delete chat
   const [deleteChat] = useMutation(DELETE_CHAT, {
     onCompleted: () => refetch(),
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // Subscription: live updates
+  // Subscriptions wrapped in try/catch to avoid crashing
   useSubscription(SUBSCRIBE_TO_CHATS, {
-    skip: !tokenReady,
-    onData: ({ data: subData }) => {
-      if (subData.data?.chats) {
-        setChats(subData.data.chats)
+    skip: !token,
+    onData: ({ data: subscriptionData }) => {
+      try {
+        if (subscriptionData.data?.chats) {
+          setChats(subscriptionData.data.chats)
+          setSubError(false)
+        }
+      } catch (err) {
+        console.error('Subscription processing error:', err)
+        setSubError(true)
       }
     },
-    onError: (err) => console.error('Subscription error:', err),
+    onError: (err) => {
+      console.error('Subscription error:', err)
+      setSubError(true)
+    },
   })
 
-  // Update chats if query succeeds
   useEffect(() => {
     if (data?.chats) setChats(data.chats)
   }, [data])
@@ -96,17 +100,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!window.confirm('Are you sure you want to delete this chat?')) return
-    try {
-      await deleteChat({ variables: { chat_id: chatId } })
-      if (selectedChatId === chatId) onSelectChat?.('')
-    } catch (err) {
-      console.error('Error deleting chat:', err)
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      try {
+        await deleteChat({ variables: { chat_id: chatId } })
+        if (selectedChatId === chatId) onSelectChat?.('')
+      } catch (err) {
+        console.error('Error deleting chat:', err)
+      }
     }
   }
 
-  // Loading / empty states
-  if (!tokenReady || (loading && chats.length === 0)) {
+  if (!token) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
@@ -114,11 +118,21 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     )
   }
 
-  if (error && chats.length === 0) {
+  if (loading && chats.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  if ((error || subError) && chats.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
         <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">Unable to load chats</p>
+        <p className="text-sm mb-2">
+          Unable to load chats{subError ? ' (subscription error)' : ''}
+        </p>
         <button
           onClick={() => refetch()}
           className="text-blue-600 hover:text-blue-700 text-sm"
