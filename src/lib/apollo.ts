@@ -7,20 +7,16 @@ import { nhost } from './nhost'
 
 let wsClient: Client | null = null
 
-// Create (or recreate) WebSocket client
-const getWsClient = () => {
-  if (wsClient) return wsClient
-
-  wsClient = createClient({
+// Function to create a new WebSocket client
+const createWsClient = () =>
+  createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
     lazy: true,
     retryAttempts: Infinity,
     connectionParams: async () => {
       const token = await nhost.auth.getAccessToken()
       return {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
       }
     },
     on: {
@@ -32,15 +28,20 @@ const getWsClient = () => {
     },
   })
 
+const getWsClient = () => {
+  if (!wsClient) wsClient = createWsClient()
   return wsClient
 }
 
+// Create WebSocket link
 const wsLink = new GraphQLWsLink(getWsClient())
 
+// HTTP link
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_HASURA_GRAPHQL_URL!,
 })
 
+// Auth link to attach JWT
 const authLink = setContext(async (_, { headers }) => {
   const token = await nhost.auth.getAccessToken()
   return {
@@ -51,15 +52,20 @@ const authLink = setContext(async (_, { headers }) => {
   }
 })
 
+// Split link for subscriptions vs queries/mutations
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query)
-    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription'
+    return (
+      definition.kind === 'OperationDefinition' &&
+      definition.operation === 'subscription'
+    )
   },
   wsLink,
   authLink.concat(httpLink)
 )
 
+// Apollo client
 export const apolloClient = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
@@ -69,7 +75,7 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// Reconnect WS on auth change
+// Recreate WS client on auth change
 nhost.auth.onAuthStateChanged(() => {
   if (wsClient) {
     console.log('[WS] Auth changed, reconnecting...')
