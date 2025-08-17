@@ -1,40 +1,38 @@
-// /home/project/src/lib/apolloClient.ts
 import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { createClient, Client } from 'graphql-ws'
-import { nhost } from '/home/project/src/lib/nhost'
+import { nhost } from './nhost'
 
 let wsClient: Client | null = null
+let currentToken: string | null = null
 
-// Create WS client with token handling
-const createWsClient = () =>
-  createClient({
+const createWsClient = (token: string) => {
+  return createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
     lazy: true,
     retryAttempts: Infinity,
-    connectionParams: async () => {
-      const token = await nhost.auth.getAccessToken()
-      if (!token) return {}
-      return { headers: { Authorization: `Bearer ${token}` } }
+    connectionParams: {
+      headers: { Authorization: `Bearer ${token}` },
     },
     on: {
       connected: () => console.log('[WS] Connected'),
       closed: () => {
-        console.log('[WS] WS closed, will recreate on next subscription')
+        console.log('[WS] Connection closed, will recreate...')
         wsClient = null
       },
       error: (err) => console.error('[WS] Connection error:', err),
     },
   })
+}
 
 const getWsClient = () => {
-  if (!wsClient) wsClient = createWsClient()
+  if (!wsClient && currentToken) wsClient = createWsClient(currentToken)
   return wsClient
 }
 
-const wsLink = new GraphQLWsLink(getWsClient())
+const wsLink = new GraphQLWsLink(getWsClient()!)
 
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_HASURA_GRAPHQL_URL!,
@@ -42,13 +40,16 @@ const httpLink = createHttpLink({
 
 const authLink = setContext(async (_, { headers }) => {
   const token = await nhost.auth.getAccessToken()
-  return { headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' } }
+  currentToken = token
+  return {
+    headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' },
+  }
 })
 
 const splitLink = split(
   ({ query }) => {
-    const def = getMainDefinition(query)
-    return def.kind === 'OperationDefinition' && def.operation === 'subscription'
+    const definition = getMainDefinition(query)
+    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription'
   },
   wsLink,
   authLink.concat(httpLink)
@@ -63,10 +64,12 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// ⚡ Reconnect WS whenever auth changes
+// ⚡ Recreate WS client whenever token changes
 nhost.auth.onAuthStateChanged(async () => {
+  const token = await nhost.auth.getAccessToken()
+  currentToken = token
   if (wsClient) {
-    console.log('[WS] Auth changed, disposing WS client...')
+    console.log('[WS] Auth changed, reconnecting WS...')
     wsClient.dispose()
     wsClient = null
   }
