@@ -4,6 +4,7 @@ import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import clsx from 'clsx'
 import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '../../graphql/queries'
 import { DELETE_CHAT } from '../../graphql/mutations'
+import { nhost } from '../../lib/nhost'
 
 interface Message {
   id: string
@@ -25,6 +26,18 @@ interface ChatListProps {
 
 export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
+  const [token, setToken] = useState<string | null>(null)
+
+  // Fetch token on mount and listen for auth changes
+  useEffect(() => {
+    const fetchToken = async () => {
+      const t = await nhost.auth.getAccessToken()
+      setToken(t)
+    }
+    fetchToken()
+    const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
+    return () => unsubscribe()
+  }, [])
 
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     errorPolicy: 'all',
@@ -45,24 +58,18 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   })
 
   const [deleteChat] = useMutation(DELETE_CHAT, {
-    onCompleted: () => {
-      refetch()
-    },
-    onError: (error) => {
-      console.error('Error deleting chat:', error)
-    }
+    onCompleted: () => refetch(),
+    onError: (error) => console.error('Error deleting chat:', error)
   })
 
-  // Subscribe to live updates
-  useSubscription(SUBSCRIBE_TO_CHATS, {
+  // Subscribe to live updates only if token exists
+  useSubscription(token ? SUBSCRIBE_TO_CHATS : null, {
     onData: ({ data: subscriptionData }) => {
       if (subscriptionData.data?.chats) {
         setChats(subscriptionData.data.chats)
       }
     },
-    onError: (error) => {
-      console.error('Subscription error:', error)
-    }
+    onError: (error) => console.error('Subscription error:', error)
   })
 
   useEffect(() => {
@@ -84,9 +91,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     if (window.confirm('Are you sure you want to delete this chat?')) {
       try {
         await deleteChat({ variables: { chat_id: chatId } })
-        if (selectedChatId === chatId) {
-          onSelectChat('')
-        }
+        if (selectedChatId === chatId) onSelectChat('')
       } catch (err) {
         console.error('Error deleting chat:', err)
       }
