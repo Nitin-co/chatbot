@@ -1,161 +1,227 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useMutation, useSubscription } from '@apollo/client'
-import { Loader, AlertCircle } from 'lucide-react'
-import { SUBSCRIBE_TO_MESSAGES } from '../../graphql/queries'
-import { INSERT_MESSAGE } from '../../graphql/mutations'
-import { MessageBubble } from './MessageBubble'
-import { MessageInput } from './MessageInput'
+import React, { useEffect, useState } from 'react'
+import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
+import { useQuery, useMutation, useSubscription } from '@apollo/client'
+import clsx from 'clsx'
+import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '../../graphql/queries'
+import { DELETE_CHAT } from '../../graphql/mutations'
 import { nhost } from '../../lib/nhost'
 
 interface Message {
   id: string
   text: string
-  sender: 'user' | 'bot'
+  sender: string
   created_at: string
 }
 
-interface ChatViewProps {
-  chatId: string
+interface Chat {
+  id: string
+  created_at: string
+  messages?: Message[]
 }
 
-const getBotResponse = (userMessage: string): string => {
-  const responses = [
-    "That's an interesting point! Can you tell me more about that?",
-    "I understand what you're saying. How does that make you feel?",
-    "Thanks for sharing that with me. What would you like to explore next?",
-    "That's a great question! Let me think about that for a moment...",
-    "I appreciate you bringing that up. Have you considered looking at it from a different angle?",
-    "That sounds important to you. Can you help me understand why?",
-    "I'm here to help! What specific aspect would you like to focus on?",
-    "That's fascinating! I'd love to learn more about your perspective on this.",
-  ]
-  const lowerMessage = userMessage.toLowerCase()
-  if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-    return "Hello! It's great to meet you. How are you doing today?"
-  }
-  if (lowerMessage.includes('help')) {
-    return "I'm here to help! Feel free to ask me anything or just chat about what's on your mind."
-  }
-  if (lowerMessage.includes('how are you')) {
-    return "I'm doing well, thank you for asking! I'm here and ready to chat with you. How are you feeling today?"
-  }
-  if (lowerMessage.includes('thank')) {
-    return "You're very welcome! I'm happy I could help. Is there anything else you'd like to talk about?"
-  }
-  return responses[Math.floor(Math.random() * responses.length)]
+interface ChatListProps {
+  selectedChatId?: string
+  onSelectChat: (chatId: string) => void
 }
 
-export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
-  const [isSending, setIsSending] = useState(false)
+export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat }) => {
+  const [chats, setChats] = useState<Chat[]>([])
   const [token, setToken] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Fetch access token
   useEffect(() => {
     const fetchToken = async () => {
-      const t = await nhost.auth.getAccessToken()
-      setToken(t)
+      try {
+        const t = await nhost.auth.getAccessToken()
+        setToken(t)
+      } catch (err) {
+        console.error('Token fetch error:', err)
+        setToken(null)
+      }
     }
     fetchToken()
     const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
     return () => unsubscribe()
   }, [])
 
-  const { data, loading, error } = useSubscription(
-    token ? SUBSCRIBE_TO_MESSAGES : null,
-    { variables: { chatId }, errorPolicy: 'all' }
+  const { data, loading, error, refetch } = useQuery(GET_CHATS, {
+    errorPolicy: 'all',
+    fetchPolicy: 'cache-and-network',
+  })
+
+  const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
+    onCompleted: (data) => {
+      if (data?.insert_chats_one) {
+        const newChat = { ...data.insert_chats_one, messages: [] }
+        setChats(prev => [newChat, ...prev])
+        onSelectChat(newChat.id)
+      }
+    },
+    onError: (error) => {
+      console.error('Error creating chat:', error)
+    }
+  })
+
+  const [deleteChat] = useMutation(DELETE_CHAT, {
+    onCompleted: () => {
+      refetch()
+    },
+    onError: (error) => {
+      console.error('Error deleting chat:', error)
+    }
+  })
+
+  // Subscribe to live updates only if token exists
+  useSubscription(
+    token ? SUBSCRIBE_TO_CHATS : undefined,
+    {
+      onData: ({ data: subscriptionData }) => {
+        if (subscriptionData.data?.chats) {
+          setChats(subscriptionData.data.chats)
+        }
+      },
+      onError: (error) => {
+        console.error('Subscription error:', error)
+      },
+      skip: !token
+    }
   )
 
-  const [insertMessage] = useMutation(INSERT_MESSAGE, { errorPolicy: 'all' })
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   useEffect(() => {
-    scrollToBottom()
-  }, [data?.messages?.length])
+    if (data?.chats) {
+      setChats(data.chats)
+    }
+  }, [data])
 
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isSending) return
-    setIsSending(true)
+  const handleCreateChat = async () => {
     try {
-      const cleanedText = text.trim()
-      await insertMessage({ variables: { chat_id: chatId, text: cleanedText, sender: 'user' } })
-
-      setTimeout(async () => {
-        try {
-          const botResponse = getBotResponse(cleanedText)
-          await insertMessage({ variables: { chat_id: chatId, text: botResponse, sender: 'bot' } })
-        } catch (error) {
-          console.error('Error sending bot message:', error)
-          await insertMessage({
-            variables: {
-              chat_id: chatId,
-              text: "I'm sorry, I'm having trouble responding right now. Please try again.",
-              sender: 'bot'
-            }
-          })
-        } finally {
-          setIsSending(false)
-        }
-      }, 1000 + Math.random() * 2000)
-    } catch (error) {
-      console.error('Error sending user message:', error)
-      setIsSending(false)
+      await createChat()
+    } catch (err) {
+      console.error('Error creating chat:', err)
     }
   }
 
-  if (loading && !data) {
+  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      try {
+        await deleteChat({ variables: { chat_id: chatId } })
+        if (selectedChatId === chatId) {
+          onSelectChat('')
+        }
+      } catch (err) {
+        console.error('Error deleting chat:', err)
+      }
+    }
+  }
+
+  if (loading && chats.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-500">Loading messages...</p>
+      <div className="w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+        <div className="flex items-center justify-center h-full">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </div>
     )
   }
 
-  if (error && !data) {
+  if (error && chats.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center text-red-600">
-          <AlertCircle className="h-8 w-8 mx-auto mb-4" />
-          <p className="mb-2">Unable to load messages</p>
-          <p className="text-sm text-gray-500">Please check your connection and try again</p>
+      <div className="w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Chats</h2>
+          <button
+            onClick={handleCreateChat}
+            disabled={createLoading}
+            className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {createLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <p className="text-sm mb-4">Unable to load chats</p>
+            <button
+              onClick={() => refetch()}
+              className="text-blue-600 hover:text-blue-700 text-sm"
+            >
+              Try again
+            </button>
+          </div>
         </div>
       </div>
     )
   }
-
-  const messages: Message[] = data?.messages || []
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-500">
-              <p className="text-lg mb-2">Start a conversation</p>
-              <p className="text-sm">Send a message to begin chatting with the AI assistant</p>
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => <MessageBubble key={message.id} message={message} />)
-        )}
-        {isSending && (
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <Loader className="h-4 w-4 text-blue-600 animate-spin" />
-            </div>
-            <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
-              <p className="text-sm">Thinking...</p>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+    <div className="w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Chats</h2>
+        <button
+          onClick={handleCreateChat}
+          disabled={createLoading}
+          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          {createLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        </button>
       </div>
-      <MessageInput onSendMessage={handleSendMessage} disabled={isSending} />
+
+      {chats.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm">No chats yet</p>
+            <p className="text-xs mt-1">Create your first chat to get started</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <ul className="space-y-2">
+            {chats.map((chat) => {
+              const lastMsg = chat.messages?.[0]
+              const preview = lastMsg?.text || 'New chat'
+              const truncatedPreview = preview.length > 50 ? preview.substring(0, 50) + '...' : preview
+              
+              return (
+                <li
+                  key={chat.id}
+                  onClick={() => onSelectChat(chat.id)}
+                  className={clsx(
+                    'group p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-100',
+                    selectedChatId === chat.id && 'bg-blue-50 border border-blue-200'
+                  )}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-900 truncate">
+                          {truncatedPreview}
+                        </span>
+                      </div>
+                      {lastMsg && (
+                        <p className="text-xs text-gray-500">
+                          {lastMsg.sender === 'user' ? 'You' : 'Bot'} · {' '}
+                          {new Date(lastMsg.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteChat(chat.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
