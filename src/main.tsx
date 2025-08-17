@@ -10,11 +10,11 @@ import './index.css'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <NhostProvider nhost={nhost}>
-      <NhostApolloProvider nhost={nhost}>
+      <ApolloProvider client={apolloClient}>
         <Router>
           <App />
         </Router>
-      </NhostApolloProvider>
+      </ApolloProvider>
     </NhostProvider>
   </StrictMode>
 )
