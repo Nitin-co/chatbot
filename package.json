@@ -14,6 +14,7 @@
     "@headlessui/react": "^2.2.7",
     "@nhost/nhost-js": "^3.3.0",
     "@nhost/react": "^3.11.1",
+    "@nhost/react-apollo": "^18.0.1",
     "clsx": "^2.1.1",
     "graphql": "^16.11.0",
     "graphql-ws": "^6.0.6",
