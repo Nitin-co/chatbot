@@ -1,10 +1,11 @@
+// /home/project/src/components/chat/ChatView.tsx
 import React, { useEffect, useState } from 'react'
 import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
-import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import clsx from 'clsx'
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/src/graphql/queries'
-import { DELETE_CHAT } from '/src/graphql/mutations'
-import { nhost } from '/src/lib/nhost'
+import { useQuery, useMutation, useSubscription } from '@apollo/client'
+import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
+import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
+import { nhost } from '/home/project/src/lib/nhost'
 
 interface Message {
   id: string
@@ -26,17 +27,17 @@ interface ChatViewProps {
 
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
-  const [token, setToken] = useState<string | null>(null)
+  const [tokenReady, setTokenReady] = useState(false)
 
-  // Fetch token and listen to auth changes
+  // Fetch token & listen for auth changes
   useEffect(() => {
     const fetchToken = async () => {
       try {
         const t = await nhost.auth.getAccessToken()
-        setToken(t)
+        setTokenReady(!!t)
       } catch (err) {
         console.error('Token fetch error:', err)
-        setToken(null)
+        setTokenReady(false)
       }
     }
     fetchToken()
@@ -44,17 +45,18 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return () => unsubscribe()
   }, [])
 
-  // Queries & Mutations
+  // Query chats
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
-    skip: !token,
+    skip: !tokenReady,
     fetchPolicy: 'cache-and-network',
     errorPolicy: 'all',
   })
 
+  // Mutation: create chat
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
-    onCompleted: (data) => {
-      if (data?.insert_chats_one) {
-        const newChat = { ...data.insert_chats_one, messages: [] }
+    onCompleted: (res) => {
+      if (res?.insert_chats_one) {
+        const newChat = { ...res.insert_chats_one, messages: [] }
         setChats(prev => [newChat, ...prev])
         onSelectChat?.(newChat.id)
       }
@@ -62,26 +64,24 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error creating chat:', err),
   })
 
+  // Mutation: delete chat
   const [deleteChat] = useMutation(DELETE_CHAT, {
     onCompleted: () => refetch(),
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // Subscription (ignore errors, just update chats if possible)
+  // Subscription: live updates
   useSubscription(SUBSCRIBE_TO_CHATS, {
-    skip: !token,
-    onData: ({ data: subscriptionData }) => {
-      if (subscriptionData.data?.chats) {
-        setChats(subscriptionData.data.chats)
+    skip: !tokenReady,
+    onData: ({ data: subData }) => {
+      if (subData.data?.chats) {
+        setChats(subData.data.chats)
       }
     },
-    onError: (err) => {
-      // log but don’t crash the app
-      console.warn('Subscription error (non-fatal):', err)
-    },
+    onError: (err) => console.error('Subscription error:', err),
   })
 
-  // Update chats when initial query completes
+  // Update chats if query succeeds
   useEffect(() => {
     if (data?.chats) setChats(data.chats)
   }, [data])
@@ -96,17 +96,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      try {
-        await deleteChat({ variables: { chat_id: chatId } })
-        if (selectedChatId === chatId) onSelectChat?.('')
-      } catch (err) {
-        console.error('Error deleting chat:', err)
-      }
+    if (!window.confirm('Are you sure you want to delete this chat?')) return
+    try {
+      await deleteChat({ variables: { chat_id: chatId } })
+      if (selectedChatId === chatId) onSelectChat?.('')
+    } catch (err) {
+      console.error('Error deleting chat:', err)
     }
   }
 
-  if (!token || (loading && chats.length === 0)) {
+  // Loading / empty states
+  if (!tokenReady || (loading && chats.length === 0)) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
