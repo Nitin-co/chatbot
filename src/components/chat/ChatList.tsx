@@ -42,7 +42,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     errorPolicy: 'all',
     fetchPolicy: 'cache-and-network',
-    skip: !token, // skip until token exists
+    skip: !token,
   })
 
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
@@ -53,9 +53,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         onSelectChat(newChat.id)
       }
     },
-    onError: (error) => {
-      console.error('Error creating chat:', error)
-    }
+    onError: (error) => console.error('Error creating chat:', error)
   })
 
   const [deleteChat] = useMutation(DELETE_CHAT, {
@@ -63,9 +61,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     onError: (error) => console.error('Error deleting chat:', error)
   })
 
-  // Subscribe to live updates only if token exists
+  // Subscribe to live updates
   useSubscription(SUBSCRIBE_TO_CHATS, {
-    skip: !token, // ⚡ key fix here
     onData: ({ data: subscriptionData }) => {
       if (subscriptionData.data?.chats) {
         setChats(subscriptionData.data.chats)
