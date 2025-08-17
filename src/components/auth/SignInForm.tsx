@@ -30,15 +30,19 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     await signInEmailPassword(email, password)
 
     // Refresh Apollo subscriptions after login
-    import('/home/project/src/lib/apollo').then(({ wsClient }) => {
-      if (wsClient) {
-        wsClient.dispose()
-      }
-    })
+    import { apolloClient } from 'src/lib/apollo'  // make sure the path is correct
 
-  } catch (err) {
-    console.error('Sign in error:', err)
+try {
+  await signInEmailPassword(email, password)
+
+  // Reconnect WS client after login
+  if (apolloClient.link?.options?.wsClient) {
+    console.log('[SignIn] Reconnecting WS after login...')
+    apolloClient.link.options.wsClient.dispose()
   }
+} catch (err) {
+  console.error('Sign in error:', err)
+}
 }
 
 
