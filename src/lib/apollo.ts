@@ -1,52 +1,71 @@
-import { ApolloClient, InMemoryCache, split, HttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client';
+import { setContext } from '@apollo/client/link/context';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
-import { createClient } from 'graphql-ws';
 import { getMainDefinition } from '@apollo/client/utilities';
+import { createClient, Client } from 'graphql-ws';
 import { nhost } from './nhost';
 
-// HTTP link for queries/mutations
-const httpLink = new HttpLink({
-  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL,
-  headers: async () => {
-    const token = await nhost.auth.getAccessToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  },
+let wsClient: Client | null = null;
+let currentToken: string | null = null;
+
+const createWsClient = (token: string) => 
+  createClient({
+    url: import.meta.env.VITE_HASURA_WS_URL!,
+    lazy: true,
+    retryAttempts: Infinity,
+    connectionParams: {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+    on: {
+      connected: () => console.log('[WS] Connected'),
+      closed: () => {
+        console.log('[WS] WS closed, will recreate on next subscription');
+        wsClient = null;
+      },
+      error: (err) => console.error('[WS] Connection error:', err),
+    },
+  });
+
+const getWsLink = async () => {
+  if (!currentToken) {
+    currentToken = await nhost.auth.getAccessToken();
+  }
+  if (!currentToken) return null; // still no token
+  if (!wsClient) wsClient = createWsClient(currentToken);
+  return new GraphQLWsLink(wsClient);
+};
+
+// HTTP + auth
+const httpLink = createHttpLink({ uri: import.meta.env.VITE_HASURA_GRAPHQL_URL! });
+
+const authLink = setContext(async (_, { headers }) => {
+  const token = await nhost.auth.getAccessToken();
+  currentToken = token;
+  return { headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' } };
 });
 
-// WebSocket link for subscriptions
-let wsLink: GraphQLWsLink | null = null;
-try {
-  wsLink = new GraphQLWsLink(
-    createClient({
-      url: import.meta.env.VITE_HASURA_WS_URL!,
-      connectionParams: async () => {
-        const token = await nhost.auth.getAccessToken();
-        return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      },
-      lazy: true, // connect only when needed
-      retryAttempts: 5,
-    })
-  );
-} catch (err) {
-  console.error("Failed to create WS link:", err);
-}
-
-// Use split for queries/mutations vs subscriptions
-const splitLink = wsLink
-  ? split(
-      ({ query }) => {
-        const definition = getMainDefinition(query);
-        return (
-          definition.kind === 'OperationDefinition' &&
-          definition.operation === 'subscription'
-        );
-      },
-      wsLink,
-      httpLink
-    )
-  : httpLink; // fallback to http if wsLink is null
-
+// Apollo client
 export const apolloClient = new ApolloClient({
-  link: splitLink,
+  link: split(
+    ({ query }) => {
+      const definition = getMainDefinition(query);
+      return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
+    },
+    // Dynamic WS link
+    await getWsLink() || httpLink, // fallback to HTTP if WS not ready
+    authLink.concat(httpLink)
+  ),
   cache: new InMemoryCache(),
+  defaultOptions: { watchQuery: { errorPolicy: 'all' }, query: { errorPolicy: 'all' } },
+});
+
+// Recreate WS client when auth changes
+nhost.auth.onAuthStateChanged(async () => {
+  const token = await nhost.auth.getAccessToken();
+  currentToken = token;
+  if (wsClient) {
+    console.log('[WS] Auth changed, disposing old WS client...');
+    wsClient.dispose();
+    wsClient = null;
+  }
 });
