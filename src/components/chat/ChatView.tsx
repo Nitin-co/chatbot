@@ -1,10 +1,13 @@
+// src/components/chat/ChatView.tsx
 import React, { useEffect, useState, useRef } from 'react'
 import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
-import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import clsx from 'clsx'
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
+import { GET_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
 import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
 import { nhost } from '/home/project/src/lib/nhost'
+import { useQuery, useMutation } from '@apollo/client'
+import { useSafeSubscription } from '/home/project/src/hooks/useSafeSubscription'
+import { SUBSCRIBE_TO_CHATS } from '/home/project/src/graphql/queries'
 
 interface Message {
   id: string
@@ -27,9 +30,6 @@ interface ChatViewProps {
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
   const [token, setToken] = useState<string | null>(null)
-  const [retryKey, setRetryKey] = useState(0) // for retrying subscription
-  const [subError, setSubError] = useState(false)
-  const retryCount = useRef(0)
 
   // Fetch token and listen to auth changes
   useEffect(() => {
@@ -47,7 +47,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return () => unsubscribe()
   }, [])
 
-  // Queries & Mutations
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     skip: !token,
     fetchPolicy: 'cache-and-network',
@@ -70,36 +69,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // Subscription with detailed protocol error logging + retry
-  useSubscription(SUBSCRIBE_TO_CHATS, {
-    key: retryKey, // force new subscription on retry
+  // ✅ Safe subscription
+  useSafeSubscription({
+    query: SUBSCRIBE_TO_CHATS,
     skip: !token,
-    onData: ({ data: subscriptionData }) => {
-      if (subscriptionData.data?.chats) {
-        setChats(subscriptionData.data.chats)
-        setSubError(false)
-        retryCount.current = 0
-      }
-    },
-    onError: (err: any) => {
-      console.error('Subscription error:', err)
-
-      // Log detailed protocol error info
-      if (err.protocolErrors && err.protocolErrors.length > 0) {
-        console.error(
-          'Protocol error details:',
-          JSON.stringify(err.protocolErrors, null, 2)
-        )
-      }
-
-      setSubError(true)
-
-      // Exponential backoff retry (max 30s)
-      const timeout = Math.min(30000, 1000 * 2 ** retryCount.current)
-      retryCount.current += 1
-      console.log(`Retrying subscription in ${timeout / 1000}s... (attempt ${retryCount.current})`)
-      setTimeout(() => setRetryKey(prev => prev + 1), timeout)
-    },
+    onData: (subData) => {
+      if (subData?.chats) setChats(subData.chats)
+    }
   })
 
   useEffect(() => {
@@ -126,7 +102,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     }
   }
 
-  if (!token) {
+  if (!token || (loading && chats.length === 0)) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
@@ -134,21 +110,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     )
   }
 
-  if (loading && chats.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    )
-  }
-
-  if ((error || subError) && chats.length === 0) {
+  if ((error) && chats.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
         <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">
-          {subError ? 'Subscription error' : 'Unable to load chats'}
-        </p>
+        <p className="text-sm mb-2">Unable to load chats</p>
         <button
           onClick={() => refetch()}
           className="text-blue-600 hover:text-blue-700 text-sm"
