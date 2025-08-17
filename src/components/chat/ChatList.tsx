@@ -32,13 +32,19 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const fetchChats = async () => {
     try {
       setLoading(true);
-      const { data } = await apolloClient.query({
+      const result = await apolloClient.query({
         query: GET_CHATS,
         fetchPolicy: "network-only",
       });
-      setChats(data.chats || []);
+      if (result && result.data) {
+        setChats(result.data.chats || []);
+      } else {
+        console.error("No data received from GraphQL query");
+        setChats([]);
+      }
     } catch (err) {
       console.error("Error loading chats:", err);
+      setChats([]);
     } finally {
       setLoading(false);
     }
