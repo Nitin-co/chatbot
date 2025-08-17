@@ -61,9 +61,9 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     onError: (error) => console.error('Error deleting chat:', error)
   })
 
-  // Subscribe to live updates only after token is ready
+  // ⚡ Only subscribe if token exists to prevent ApolloError
   useSubscription(SUBSCRIBE_TO_CHATS, {
-    skip: !token, // ⚡ key tweak here
+    skip: !token,
     onData: ({ data: subscriptionData }) => {
       if (subscriptionData.data?.chats) {
         setChats(subscriptionData.data.chats)
