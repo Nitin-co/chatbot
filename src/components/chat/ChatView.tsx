@@ -27,7 +27,7 @@ interface ChatViewProps {
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
   const [token, setToken] = useState<string | null>(null)
-  const [retryKey, setRetryKey] = useState(0) // triggers new subscription
+  const [retryKey, setRetryKey] = useState(0) // for retrying subscription
   const [subError, setSubError] = useState(false)
   const retryCount = useRef(0)
 
@@ -70,9 +70,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // Subscription with full protocol error logging and retry
+  // Subscription with detailed protocol error logging + retry
   useSubscription(SUBSCRIBE_TO_CHATS, {
-    key: retryKey,
+    key: retryKey, // force new subscription on retry
     skip: !token,
     onData: ({ data: subscriptionData }) => {
       if (subscriptionData.data?.chats) {
@@ -81,15 +81,23 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
         retryCount.current = 0
       }
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error('Subscription error:', err)
+
+      // Log detailed protocol error info
       if (err.protocolErrors && err.protocolErrors.length > 0) {
-        console.error('Protocol error details:', err.protocolErrors)
+        console.error(
+          'Protocol error details:',
+          JSON.stringify(err.protocolErrors, null, 2)
+        )
       }
+
       setSubError(true)
+
+      // Exponential backoff retry (max 30s)
       const timeout = Math.min(30000, 1000 * 2 ** retryCount.current)
       retryCount.current += 1
-      console.log(`Retrying subscription in ${timeout / 1000}s...`)
+      console.log(`Retrying subscription in ${timeout / 1000}s... (attempt ${retryCount.current})`)
       setTimeout(() => setRetryKey(prev => prev + 1), timeout)
     },
   })
@@ -118,7 +126,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     }
   }
 
-  if (!token || (loading && chats.length === 0)) {
+  if (!token) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  if (loading && chats.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
