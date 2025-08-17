@@ -30,7 +30,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     await signInEmailPassword(email, password)
 
     // Refresh Apollo subscriptions after login
-    import('./apollo').then(({ wsClient }) => {
+    import('/home/project/src/lib/apollo.ts').then(({ wsClient }) => {
       if (wsClient) {
         wsClient.dispose()
       }
