@@ -1,195 +1,73 @@
-// /home/project/src/components/chat/ChatView.tsx
-import React, { useEffect, useState } from 'react'
-import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
-import clsx from 'clsx'
-import { useQuery, useMutation, useSubscription } from '@apollo/client'
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
-import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
+// /home/project/src/lib/apolloClient.ts
+import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client'
+import { setContext } from '@apollo/client/link/context'
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
+import { getMainDefinition } from '@apollo/client/utilities'
+import { createClient, Client } from 'graphql-ws'
 import { nhost } from '/home/project/src/lib/nhost'
 
-interface Message {
-  id: string
-  text: string
-  sender: string
-  created_at: string
-}
+let wsClient: Client | null = null
 
-interface Chat {
-  id: string
-  created_at: string
-  messages?: Message[]
-}
-
-interface ChatViewProps {
-  selectedChatId?: string
-  onSelectChat?: (chatId: string) => void
-}
-
-export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
-  const [chats, setChats] = useState<Chat[]>([])
-  const [tokenReady, setTokenReady] = useState(false)
-
-  // Fetch token & listen for auth changes
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const t = await nhost.auth.getAccessToken()
-        setTokenReady(!!t)
-      } catch (err) {
-        console.error('Token fetch error:', err)
-        setTokenReady(false)
-      }
-    }
-    fetchToken()
-    const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
-    return () => unsubscribe()
-  }, [])
-
-  // Query chats
-  const { data, loading, error, refetch } = useQuery(GET_CHATS, {
-    skip: !tokenReady,
-    fetchPolicy: 'cache-and-network',
-    errorPolicy: 'all',
-  })
-
-  // Mutation: create chat
-  const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
-    onCompleted: (res) => {
-      if (res?.insert_chats_one) {
-        const newChat = { ...res.insert_chats_one, messages: [] }
-        setChats(prev => [newChat, ...prev])
-        onSelectChat?.(newChat.id)
-      }
+// Create WS client with token handling
+const createWsClient = () =>
+  createClient({
+    url: import.meta.env.VITE_HASURA_WS_URL!,
+    lazy: true,
+    retryAttempts: Infinity,
+    connectionParams: async () => {
+      const token = await nhost.auth.getAccessToken()
+      if (!token) return {}
+      return { headers: { Authorization: `Bearer ${token}` } }
     },
-    onError: (err) => console.error('Error creating chat:', err),
-  })
-
-  // Mutation: delete chat
-  const [deleteChat] = useMutation(DELETE_CHAT, {
-    onCompleted: () => refetch(),
-    onError: (err) => console.error('Error deleting chat:', err),
-  })
-
-  // Subscription: live updates
-  useSubscription(SUBSCRIBE_TO_CHATS, {
-    skip: !tokenReady,
-    onData: ({ data: subData }) => {
-      if (subData.data?.chats) {
-        setChats(subData.data.chats)
-      }
+    on: {
+      connected: () => console.log('[WS] Connected'),
+      closed: () => {
+        console.log('[WS] WS closed, will recreate on next subscription')
+        wsClient = null
+      },
+      error: (err) => console.error('[WS] Connection error:', err),
     },
-    onError: (err) => console.error('Subscription error:', err),
   })
 
-  // Update chats if query succeeds
-  useEffect(() => {
-    if (data?.chats) setChats(data.chats)
-  }, [data])
-
-  const handleCreateChat = async () => {
-    try {
-      await createChat()
-    } catch (err) {
-      console.error('Error creating chat:', err)
-    }
-  }
-
-  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!window.confirm('Are you sure you want to delete this chat?')) return
-    try {
-      await deleteChat({ variables: { chat_id: chatId } })
-      if (selectedChatId === chatId) onSelectChat?.('')
-    } catch (err) {
-      console.error('Error deleting chat:', err)
-    }
-  }
-
-  // Loading / empty states
-  if (!tokenReady || (loading && chats.length === 0)) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    )
-  }
-
-  if (error && chats.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-        <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">Unable to load chats</p>
-        <button
-          onClick={() => refetch()}
-          className="text-blue-600 hover:text-blue-700 text-sm"
-        >
-          Try again
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Chats</h2>
-        <button
-          onClick={handleCreateChat}
-          disabled={createLoading}
-          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          {createLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {chats.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-gray-500">
-          <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-          <p className="text-sm">No chats yet</p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {chats.map(chat => {
-            const lastMsg = chat.messages?.[0]
-            const preview = lastMsg?.text || 'New chat'
-            const truncatedPreview = preview.length > 50 ? preview.substring(0, 50) + '...' : preview
-
-            return (
-              <li
-                key={chat.id}
-                onClick={() => onSelectChat?.(chat.id)}
-                className={clsx(
-                  'group p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-100',
-                  selectedChatId === chat.id && 'bg-blue-50 border border-blue-200'
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {truncatedPreview}
-                      </span>
-                    </div>
-                    {lastMsg && (
-                      <p className="text-xs text-gray-500">
-                        {lastMsg.sender === 'user' ? 'You' : 'Bot'} ·{' '}
-                        {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => handleDeleteChat(chat.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
-  )
+const getWsClient = () => {
+  if (!wsClient) wsClient = createWsClient()
+  return wsClient
 }
+
+const wsLink = new GraphQLWsLink(getWsClient())
+
+const httpLink = createHttpLink({
+  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL!,
+})
+
+const authLink = setContext(async (_, { headers }) => {
+  const token = await nhost.auth.getAccessToken()
+  return { headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' } }
+})
+
+const splitLink = split(
+  ({ query }) => {
+    const def = getMainDefinition(query)
+    return def.kind === 'OperationDefinition' && def.operation === 'subscription'
+  },
+  wsLink,
+  authLink.concat(httpLink)
+)
+
+export const apolloClient = new ApolloClient({
+  link: splitLink,
+  cache: new InMemoryCache(),
+  defaultOptions: {
+    watchQuery: { errorPolicy: 'all' },
+    query: { errorPolicy: 'all' },
+  },
+})
+
+// ⚡ Reconnect WS whenever auth changes
+nhost.auth.onAuthStateChanged(async () => {
+  if (wsClient) {
+    console.log('[WS] Auth changed, disposing WS client...')
+    wsClient.dispose()
+    wsClient = null
+  }
+})
