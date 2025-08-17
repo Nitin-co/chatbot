@@ -1,11 +1,10 @@
-// src/components/chat/ChatView.tsx
 import React, { useEffect, useState, useRef } from 'react'
 import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
+import { useQuery, useMutation } from '@apollo/client'
 import clsx from 'clsx'
 import { GET_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
 import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
 import { nhost } from '/home/project/src/lib/nhost'
-import { useQuery, useMutation } from '@apollo/client'
 import { useSafeSubscription } from '/home/project/src/hooks/useSafeSubscription'
 import { SUBSCRIBE_TO_CHATS } from '/home/project/src/graphql/queries'
 
@@ -47,6 +46,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return () => unsubscribe()
   }, [])
 
+  // Queries & Mutations
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     skip: !token,
     fetchPolicy: 'cache-and-network',
@@ -69,13 +69,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // ✅ Safe subscription
-  useSafeSubscription({
-    query: SUBSCRIBE_TO_CHATS,
-    skip: !token,
-    onData: (subData) => {
-      if (subData?.chats) setChats(subData.chats)
-    }
+  // ✅ Use the safe subscription hook
+  const { data: subData, subError } = useSafeSubscription(SUBSCRIBE_TO_CHATS, {
+    skipUntilToken: true,
+    onData: ({ data: subscriptionData }) => {
+      if (subscriptionData.data?.chats) {
+        setChats(subscriptionData.data.chats)
+      }
+    },
   })
 
   useEffect(() => {
@@ -110,11 +111,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     )
   }
 
-  if ((error) && chats.length === 0) {
+  if ((error || subError) && chats.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
         <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">Unable to load chats</p>
+        <p className="text-sm mb-2">
+          {subError ? 'Subscription error' : 'Unable to load chats'}
+        </p>
         <button
           onClick={() => refetch()}
           className="text-blue-600 hover:text-blue-700 text-sm"
