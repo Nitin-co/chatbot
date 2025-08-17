@@ -5,6 +5,7 @@ import { SUBSCRIBE_TO_MESSAGES } from '../../graphql/queries'
 import { INSERT_MESSAGE } from '../../graphql/mutations'
 import { MessageBubble } from './MessageBubble'
 import { MessageInput } from './MessageInput'
+import { nhost } from '../../lib/nhost'
 
 interface Message {
   id: string
@@ -17,7 +18,6 @@ interface ChatViewProps {
   chatId: string
 }
 
-// Simple bot responses for demonstration
 const getBotResponse = (userMessage: string): string => {
   const responses = [
     "That's an interesting point! Can you tell me more about that?",
@@ -29,42 +29,43 @@ const getBotResponse = (userMessage: string): string => {
     "I'm here to help! What specific aspect would you like to focus on?",
     "That's fascinating! I'd love to learn more about your perspective on this.",
   ]
-  
-  // Simple keyword-based responses
   const lowerMessage = userMessage.toLowerCase()
-  
   if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
     return "Hello! It's great to meet you. How are you doing today?"
   }
-  
   if (lowerMessage.includes('help')) {
     return "I'm here to help! Feel free to ask me anything or just chat about what's on your mind."
   }
-  
   if (lowerMessage.includes('how are you')) {
     return "I'm doing well, thank you for asking! I'm here and ready to chat with you. How are you feeling today?"
   }
-  
   if (lowerMessage.includes('thank')) {
     return "You're very welcome! I'm happy I could help. Is there anything else you'd like to talk about?"
   }
-  
-  // Return a random response for other messages
   return responses[Math.floor(Math.random() * responses.length)]
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   const [isSending, setIsSending] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { data, loading, error } = useSubscription(SUBSCRIBE_TO_MESSAGES, {
-    variables: { chatId },
-    errorPolicy: 'all',
-  })
+  useEffect(() => {
+    const fetchToken = async () => {
+      const t = await nhost.auth.getAccessToken()
+      setToken(t)
+    }
+    fetchToken()
+    const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
+    return () => unsubscribe()
+  }, [])
 
-  const [insertMessage] = useMutation(INSERT_MESSAGE, {
-    errorPolicy: 'all',
-  })
+  const { data, loading, error } = useSubscription(
+    token ? SUBSCRIBE_TO_MESSAGES : null,
+    { variables: { chatId }, errorPolicy: 'all' }
+  )
+
+  const [insertMessage] = useMutation(INSERT_MESSAGE, { errorPolicy: 'all' })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -76,37 +77,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isSending) return
-    
     setIsSending(true)
-    
     try {
       const cleanedText = text.trim()
-      
-      // Insert user message
-      await insertMessage({
-        variables: {
-          chat_id: chatId,
-          text: cleanedText,
-          sender: 'user'
-        }
-      })
+      await insertMessage({ variables: { chat_id: chatId, text: cleanedText, sender: 'user' } })
 
-      // Simulate bot thinking time
       setTimeout(async () => {
         try {
           const botResponse = getBotResponse(cleanedText)
-          
-          // Insert bot message
-          await insertMessage({
-            variables: {
-              chat_id: chatId,
-              text: botResponse,
-              sender: 'bot'
-            }
-          })
+          await insertMessage({ variables: { chat_id: chatId, text: botResponse, sender: 'bot' } })
         } catch (error) {
           console.error('Error sending bot message:', error)
-          // Send error message as bot
           await insertMessage({
             variables: {
               chat_id: chatId,
@@ -117,8 +98,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
         } finally {
           setIsSending(false)
         }
-      }, 1000 + Math.random() * 2000) // Random delay between 1-3 seconds
-      
+      }, 1000 + Math.random() * 2000)
     } catch (error) {
       console.error('Error sending user message:', error)
       setIsSending(false)
@@ -161,9 +141,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
             </div>
           </div>
         ) : (
-          messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))
+          messages.map((message) => <MessageBubble key={message.id} message={message} />)
         )}
         {isSending && (
           <div className="flex items-start space-x-3">
