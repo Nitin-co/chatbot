@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
- import { apolloClient } from '/home/project/src/lib/apollo'
 
 interface SignInFormProps {
   onToggleMode: () => void
@@ -25,25 +24,21 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setHasAttemptedSignIn(true)
-  try {
-    await signInEmailPassword(email, password)
+    e.preventDefault()
+    setHasAttemptedSignIn(true)
+    try {
+      await signInEmailPassword(email, password)
 
-
-try {
-  await signInEmailPassword(email, password)
-
-  // Reconnect WS client after login
-  if (apolloClient.link?.options?.wsClient) {
-    console.log('[SignIn] Reconnecting WS after login...')
-    apolloClient.link.options.wsClient.dispose()
+      // Refresh Apollo subscriptions after login
+      import('../../lib/apollo').then(({ wsClient }) => {
+        if (wsClient) {
+          wsClient.dispose()
+        }
+      })
+    } catch (err) {
+      console.error('Sign in error:', err)
+    }
   }
-} catch (err) {
-  console.error('Sign in error:', err)
-}
-}
-
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
