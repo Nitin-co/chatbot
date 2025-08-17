@@ -6,13 +6,3 @@ export const nhost = new NhostClient({
   region: import.meta.env.VITE_NHOST_REGION || 'eu-central-1',
 })
 
-// Optional: sign in automatically for dev/testing
-;(async () => {
-  const session = await nhost.auth.getSession()
-  if (!session) {
-    await nhost.auth.signIn({
-      email: 'test@example.com',
-      password: 'password123',
-    })
-  }
-})()
