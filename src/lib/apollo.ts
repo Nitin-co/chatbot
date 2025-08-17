@@ -6,27 +6,12 @@ import { getMainDefinition } from '@apollo/client/utilities'
 import { createClient } from 'graphql-ws'
 import { nhost } from './nhost'
 
-// HTTP Link for queries and mutations
+// HTTP Link
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL || 'https://rvmtvbxomszjibeiocvu.hasura.eu-central-1.nhost.run/v1/graphql',
+  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL,
 })
 
-// WebSocket Link for subscriptions
-const wsLink = new GraphQLWsLink(
-  createClient({
-    url: import.meta.env.VITE_HASURA_WS_URL || 'wss://rvmtvbxomszjibeiocvu.hasura.eu-central-1.nhost.run/v1/graphql',
-    connectionParams: () => {
-      const token = nhost.auth.getAccessToken()
-      return {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      }
-    },
-  })
-)
-
-// Auth Link to add authentication headers
+// Auth Link
 const authLink = setContext((_, { headers }) => {
   const token = nhost.auth.getAccessToken()
   return {
@@ -37,7 +22,24 @@ const authLink = setContext((_, { headers }) => {
   }
 })
 
-// Split link to route queries/mutations to HTTP and subscriptions to WebSocket
+// WebSocket Link
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: import.meta.env.VITE_HASURA_WS_URL,
+    connectionParams: () => {
+      const token = nhost.auth.getAccessToken() || ''
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    },
+    lazy: true, // Only connect when subscription starts
+    retryAttempts: 5, // Retry if connection fails
+  })
+)
+
+// Split Link
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query)
@@ -50,15 +52,12 @@ const splitLink = split(
   authLink.concat(httpLink)
 )
 
+// Apollo Client
 export const apolloClient = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
   defaultOptions: {
-    watchQuery: {
-      errorPolicy: 'all',
-    },
-    query: {
-      errorPolicy: 'all',
-    },
+    watchQuery: { errorPolicy: 'all' },
+    query: { errorPolicy: 'all' },
   },
 })
