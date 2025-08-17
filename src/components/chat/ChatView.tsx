@@ -1,4 +1,4 @@
-keep everything else intact: import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import clsx from 'clsx'
