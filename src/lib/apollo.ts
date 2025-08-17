@@ -7,7 +7,6 @@ import { nhost } from './nhost'
 
 let wsClient: Client | null = null
 
-// Function to create a new WebSocket client
 const createWsClient = () => {
   return createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
@@ -19,9 +18,7 @@ const createWsClient = () => {
         console.warn('[WS] No token available, cannot authenticate WS connection')
         return {}
       }
-      return {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      return { headers: { Authorization: `Bearer ${token}` } }
     },
     on: {
       connected: () => console.log('[WS] Connected'),
@@ -39,39 +36,28 @@ const getWsClient = () => {
   return wsClient
 }
 
-// Create WebSocket link
 const wsLink = new GraphQLWsLink(getWsClient())
 
-// HTTP link
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_HASURA_GRAPHQL_URL!,
 })
 
-// Auth link to attach JWT
 const authLink = setContext(async (_, { headers }) => {
   const token = await nhost.auth.getAccessToken()
   return {
-    headers: {
-      ...headers,
-      Authorization: token ? `Bearer ${token}` : '',
-    },
+    headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' },
   }
 })
 
-// Split link for subscriptions vs queries/mutations
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query)
-    return (
-      definition.kind === 'OperationDefinition' &&
-      definition.operation === 'subscription'
-    )
+    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription'
   },
   wsLink,
   authLink.concat(httpLink)
 )
 
-// Apollo client
 export const apolloClient = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
@@ -81,7 +67,6 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// Recreate WS client on auth change
 nhost.auth.onAuthStateChanged(() => {
   if (wsClient) {
     console.log('[WS] Auth changed, reconnecting...')
