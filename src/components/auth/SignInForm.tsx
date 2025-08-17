@@ -2,20 +2,17 @@ import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
-// Centralized error logger
-function logError(context: string, error: unknown) {
-  if (import.meta.env.DEV) {
-    console.error(`[${context}]`, error)
-  }
-  // Future: send error to monitoring service.
+interface SignInFormProps {
+  onToggleMode: () => void
 }
 
-export default function SignInForm() {
+export default function SignInForm({ onToggleMode }: SignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
+  const [hasAttemptedSignIn, setHasAttemptedSignIn] = useState(false)
 
   const { signInEmailPassword, isLoading, error } = useSignInEmailPassword()
   const { resetPassword, isLoading: isResetting, isSuccess: resetSuccess, error: resetError } = useResetPassword()
@@ -28,10 +25,11 @@ export default function SignInForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setHasAttemptedSignIn(true)
     try {
       await signInEmailPassword(email, password)
     } catch (err) {
-      logError('Sign in error', err)
+      console.error('Sign in error:', err)
     }
   }
 
@@ -40,13 +38,13 @@ export default function SignInForm() {
     try {
       await resetPassword(resetEmail)
     } catch (err) {
-      logError('Reset password error', err)
+      console.error('Reset password error:', err)
     }
   }
 
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <h2 className="mt-6 text-3xl font-bold text-gray-900">
@@ -119,7 +117,7 @@ export default function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
@@ -183,7 +181,7 @@ export default function SignInForm() {
               </div>
             </div>
           </div>
-          {error && (
+          {error && hasAttemptedSignIn && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <p className="text-sm text-red-600">Unable to sign in. Please check your credentials and try again.</p>
             </div>
@@ -197,13 +195,20 @@ export default function SignInForm() {
               Forgot password?
             </button>
           </div>
-          <div>
+          <div className="space-y-3">
             <button
               type="submit"
               disabled={isLoading}
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+            <button
+              type="button"
+              onClick={onToggleMode}
+              className="w-full flex justify-center py-2 px-4 text-sm text-blue-600 hover:text-blue-500"
+            >
+              Don't have an account? Sign up
             </button>
           </div>
         </form>

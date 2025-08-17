@@ -1,5 +1,4 @@
-// src/graphql/queries.ts
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client'
 
 // Get chats with latest message for preview
 export const GET_CHATS = gql`
@@ -15,7 +14,7 @@ export const GET_CHATS = gql`
       }
     }
   }
-`;
+`
 
 // Subscribe to chats with latest message for live updates
 export const SUBSCRIBE_TO_CHATS = gql`
@@ -31,7 +30,7 @@ export const SUBSCRIBE_TO_CHATS = gql`
       }
     }
   }
-`;
+`
 
 // Create a new chat
 export const CREATE_CHAT = gql`
@@ -41,7 +40,7 @@ export const CREATE_CHAT = gql`
       created_at
     }
   }
-`;
+`
 
 // Subscribe to all messages in a specific chat
 export const SUBSCRIBE_TO_MESSAGES = gql`
@@ -53,4 +52,4 @@ export const SUBSCRIBE_TO_MESSAGES = gql`
       created_at
     }
   }
-`;
+`
