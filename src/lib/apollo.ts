@@ -7,7 +7,6 @@ import { nhost } from './nhost'
 
 let wsClient: Client | null = null
 
-// Create a new WS client
 const createWsClient = () => {
   return createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
@@ -15,7 +14,11 @@ const createWsClient = () => {
     retryAttempts: Infinity,
     connectionParams: async () => {
       const token = await nhost.auth.getAccessToken()
-      return token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+      if (!token) {
+        console.warn('[WS] No token available, cannot authenticate WS connection')
+        return {}
+      }
+      return { headers: { Authorization: `Bearer ${token}` } }
     },
     on: {
       connected: () => console.log('[WS] Connected'),
@@ -41,7 +44,9 @@ const httpLink = createHttpLink({
 
 const authLink = setContext(async (_, { headers }) => {
   const token = await nhost.auth.getAccessToken()
-  return { headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' } }
+  return {
+    headers: { ...headers, Authorization: token ? `Bearer ${token}` : '' },
+  }
 })
 
 const splitLink = split(
@@ -62,10 +67,10 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// ⚡ Recreate WS client whenever auth changes
-nhost.auth.onAuthStateChanged(() => {
+// ⚡ Important: Recreate WS client whenever token changes
+nhost.auth.onAuthStateChanged(async () => {
   if (wsClient) {
-    console.log('[WS] Auth changed, reconnecting WS client...')
+    console.log('[WS] Auth changed, reconnecting WS...')
     wsClient.dispose()
     wsClient = null
   }
