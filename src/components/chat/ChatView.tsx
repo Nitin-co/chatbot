@@ -27,10 +27,11 @@ interface ChatViewProps {
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
   const [token, setToken] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0) // for retrying subscription
   const [subError, setSubError] = useState(false)
   const retryCount = useRef(0)
-  const retryTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Fetch token and listen to auth changes
   useEffect(() => {
     const fetchToken = async () => {
       try {
@@ -46,6 +47,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return () => unsubscribe()
   }, [])
 
+  // Queries & Mutations
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
     skip: !token,
     fetchPolicy: 'cache-and-network',
@@ -68,41 +70,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  const subscribeToChats = () => {
-    useSubscription(SUBSCRIBE_TO_CHATS, {
-      skip: !token,
-      onData: ({ data: subscriptionData }) => {
-        try {
-          if (subscriptionData.data?.chats) {
-            setChats(subscriptionData.data.chats)
-            setSubError(false)
-            retryCount.current = 0 // reset retry count
-          }
-        } catch (err) {
-          console.error('Subscription processing error:', err)
-          setSubError(true)
-        }
-      },
-      onError: (err) => {
-        console.error('Subscription error:', err)
-        setSubError(true)
-
-        // Retry with exponential backoff
-        const timeout = Math.min(30000, 1000 * 2 ** retryCount.current) // max 30s
-        retryTimeout.current = setTimeout(() => {
-          retryCount.current += 1
-          subscribeToChats() // retry
-        }, timeout)
-      },
-    })
-  }
-
-  useEffect(() => {
-    if (token) subscribeToChats()
-    return () => {
-      if (retryTimeout.current) clearTimeout(retryTimeout.current)
-    }
-  }, [token])
+  // Subscription with retry mechanism
+  useSubscription(SUBSCRIBE_TO_CHATS, {
+    key: retryKey, // force new subscription on retry
+    skip: !token,
+    onData: ({ data: subscriptionData }) => {
+      if (subscriptionData.data?.chats) {
+        setChats(subscriptionData.data.chats)
+        setSubError(false)
+        retryCount.current = 0
+      }
+    },
+    onError: (err) => {
+      console.error('Subscription error:', err)
+      setSubError(true)
+      const timeout = Math.min(30000, 1000 * 2 ** retryCount.current) // exponential backoff
+      retryCount.current += 1
+      setTimeout(() => setRetryKey(prev => prev + 1), timeout)
+    },
+  })
 
   useEffect(() => {
     if (data?.chats) setChats(data.chats)
@@ -149,7 +135,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
       <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
         <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
         <p className="text-sm mb-2">
-          Unable to load chats{subError ? ' (subscription error, retrying...)' : ''}
+          {subError ? 'Subscription error' : 'Unable to load chats'}
         </p>
         <button
           onClick={() => refetch()}
