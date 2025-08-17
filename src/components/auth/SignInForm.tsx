@@ -24,14 +24,23 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setHasAttemptedSignIn(true)
-    try {
-      await signInEmailPassword(email, password)
-    } catch (err) {
-      console.error('Sign in error:', err)
-    }
+  e.preventDefault()
+  setHasAttemptedSignIn(true)
+  try {
+    await signInEmailPassword(email, password)
+
+    // Refresh Apollo subscriptions after login
+    import('./apollo').then(({ wsClient }) => {
+      if (wsClient) {
+        wsClient.dispose()
+      }
+    })
+
+  } catch (err) {
+    console.error('Sign in error:', err)
   }
+}
+
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
