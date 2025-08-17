@@ -27,12 +27,11 @@ interface ChatViewProps {
 export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
   const [chats, setChats] = useState<Chat[]>([])
   const [token, setToken] = useState<string | null>(null)
-  const [retryKey, setRetryKey] = useState(0)
+  const [retryKey, setRetryKey] = useState(0) // triggers new subscription
   const [subError, setSubError] = useState(false)
-  const [isReconnecting, setIsReconnecting] = useState(false)
   const retryCount = useRef(0)
 
-  // Fetch token & listen to auth changes
+  // Fetch token and listen to auth changes
   useEffect(() => {
     const fetchToken = async () => {
       try {
@@ -71,7 +70,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     onError: (err) => console.error('Error deleting chat:', err),
   })
 
-  // Subscription with retry
+  // Subscription with full protocol error logging and retry
   useSubscription(SUBSCRIBE_TO_CHATS, {
     key: retryKey,
     skip: !token,
@@ -79,16 +78,18 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
       if (subscriptionData.data?.chats) {
         setChats(subscriptionData.data.chats)
         setSubError(false)
-        setIsReconnecting(false)
         retryCount.current = 0
       }
     },
     onError: (err) => {
       console.error('Subscription error:', err)
+      if (err.protocolErrors && err.protocolErrors.length > 0) {
+        console.error('Protocol error details:', err.protocolErrors)
+      }
       setSubError(true)
-      setIsReconnecting(true)
       const timeout = Math.min(30000, 1000 * 2 ** retryCount.current)
       retryCount.current += 1
+      console.log(`Retrying subscription in ${timeout / 1000}s...`)
       setTimeout(() => setRetryKey(prev => prev + 1), timeout)
     },
   })
@@ -98,8 +99,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
   }, [data])
 
   const handleCreateChat = async () => {
-    try { await createChat() } 
-    catch (err) { console.error('Error creating chat:', err) }
+    try {
+      await createChat()
+    } catch (err) {
+      console.error('Error creating chat:', err)
+    }
   }
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
@@ -126,24 +130,28 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
         <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">{subError ? 'Subscription error' : 'Unable to load chats'}</p>
-        <button onClick={() => refetch()} className="text-blue-600 hover:text-blue-700 text-sm">Try again</button>
+        <p className="text-sm mb-2">
+          {subError ? 'Subscription error' : 'Unable to load chats'}
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="text-blue-600 hover:text-blue-700 text-sm"
+        >
+          Try again
+        </button>
       </div>
     )
   }
 
   return (
     <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-      {isReconnecting && (
-        <div className="w-full bg-yellow-100 text-yellow-800 text-center text-xs py-1 mb-2 rounded">
-          Reconnecting...
-        </div>
-      )}
-
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Chats</h2>
-        <button onClick={handleCreateChat} disabled={createLoading}
-          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50">
+        <button
+          onClick={handleCreateChat}
+          disabled={createLoading}
+          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
           {createLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         </button>
       </div>
@@ -161,23 +169,33 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
             const truncatedPreview = preview.length > 50 ? preview.substring(0, 50) + '...' : preview
 
             return (
-              <li key={chat.id} onClick={() => onSelectChat?.(chat.id)}
-                className={clsx('group p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-100',
-                  selectedChatId === chat.id && 'bg-blue-50 border border-blue-200')}>
+              <li
+                key={chat.id}
+                onClick={() => onSelectChat?.(chat.id)}
+                className={clsx(
+                  'group p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-100',
+                  selectedChatId === chat.id && 'bg-blue-50 border border-blue-200'
+                )}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm font-medium text-gray-900 truncate">{truncatedPreview}</span>
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {truncatedPreview}
+                      </span>
                     </div>
                     {lastMsg && (
                       <p className="text-xs text-gray-500">
-                        {lastMsg.sender === 'user' ? 'You' : 'Bot'} · {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {lastMsg.sender === 'user' ? 'You' : 'Bot'} ·{' '}
+                        {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
                   </div>
-                  <button onClick={(e) => handleDeleteChat(chat.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all">
+                  <button
+                    onClick={(e) => handleDeleteChat(chat.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+                  >
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
