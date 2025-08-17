@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import clsx from 'clsx'
-import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '../../graphql/queries'
-import { DELETE_CHAT } from '../../graphql/mutations'
-import { nhost } from '../../lib/nhost'
+import { GET_CHATS, SUBSCRIBE_TO_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
+import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
+import { nhost } from '/home/project/src/lib/nhost'
 
 interface Message {
   id: string
