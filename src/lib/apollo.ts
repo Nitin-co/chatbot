@@ -8,15 +8,19 @@ import { nhost } from './nhost'
 let wsClient: Client | null = null
 
 // Function to create a new WebSocket client
-const createWsClient = () =>
-  createClient({
+const createWsClient = () => {
+  return createClient({
     url: import.meta.env.VITE_HASURA_WS_URL!,
     lazy: true,
     retryAttempts: Infinity,
     connectionParams: async () => {
       const token = await nhost.auth.getAccessToken()
+      if (!token) {
+        console.warn('[WS] No token available, cannot authenticate WS connection')
+        return {}
+      }
       return {
-        headers: { Authorization: token ? `Bearer ${token}` : '' },
+        headers: { Authorization: `Bearer ${token}` },
       }
     },
     on: {
@@ -25,8 +29,10 @@ const createWsClient = () =>
         console.log('[WS] Connection closed, will recreate...')
         wsClient = null
       },
+      error: (err) => console.error('[WS] Connection error:', err),
     },
   })
+}
 
 const getWsClient = () => {
   if (!wsClient) wsClient = createWsClient()
