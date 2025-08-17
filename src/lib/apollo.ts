@@ -1,46 +1,40 @@
-// lib/apollo.ts
 import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { createClient, Client } from 'graphql-ws'
-import { nhost } from './nhost'
+import { nhost } from '/home/project/src/lib/nhost'
 
-// Current token and WS client
-export let wsClient: Client | null = null
+let wsClient: Client | null = null
 let currentToken: string | null = null
 
-const createWsClient = () => {
-  if (!currentToken) {
-    console.warn('[WS] No token yet, WS client cannot be created')
-    return null
+// Only create WS client if we have a valid token
+export const getWsClient = () => {
+  if (!currentToken) return null
+
+  if (!wsClient) {
+    wsClient = createClient({
+      url: import.meta.env.VITE_HASURA_WS_URL!,
+      lazy: true,
+      retryAttempts: Infinity,
+      connectionParams: {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      },
+      on: {
+        connected: () => console.log('[WS] Connected'),
+        closed: () => {
+          console.log('[WS] WS closed, will recreate on next subscription')
+          wsClient = null
+        },
+        error: (err) => console.error('[WS] Connection error:', err),
+      },
+    })
   }
 
-  return createClient({
-    url: import.meta.env.VITE_HASURA_WS_URL!,
-    lazy: true,
-    retryAttempts: Infinity,
-    connectionParams: {
-      headers: { Authorization: `Bearer ${currentToken}` },
-    },
-    on: {
-      connected: () => console.log('[WS] Connected'),
-      closed: () => {
-        console.log('[WS] WS closed, will recreate on next subscription')
-        wsClient = null
-      },
-      error: (err) => console.error('[WS] Connection error:', err),
-    },
-  })
-}
-
-// Getter to ensure WS client is always created with fresh token
-export const getWsClient = () => {
-  if (!wsClient && currentToken) wsClient = createWsClient()
   return wsClient
 }
 
-// Apollo links
+// GraphQL links
 const wsLink = new GraphQLWsLink(getWsClient()!)
 
 const httpLink = createHttpLink({
@@ -73,7 +67,7 @@ export const apolloClient = new ApolloClient({
   },
 })
 
-// Recreate WS client on auth change
+// ⚡ Recreate WS client whenever auth changes
 nhost.auth.onAuthStateChanged(async () => {
   const token = await nhost.auth.getAccessToken()
   currentToken = token
