@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
- import { apolloClient } from 'src/lib/apollo'
+ import { apolloClient } from '/home/project/src/lib/apollo'
 
 interface SignInFormProps {
   onToggleMode: () => void
