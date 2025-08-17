@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+ import { apolloClient } from 'src/lib/apollo'
 
 interface SignInFormProps {
   onToggleMode: () => void
@@ -29,8 +30,6 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
   try {
     await signInEmailPassword(email, password)
 
-    // Refresh Apollo subscriptions after login
-    import { apolloClient } from 'src/lib/apollo'  // make sure the path is correct
 
 try {
   await signInEmailPassword(email, password)
