@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { DocumentNode } from 'graphql'
 import { useSubscription, ApolloError } from '@apollo/client'
-import { getWsClient } from 'lib/apollo'
+import { getWsClient } from '/home/project/src/lib/apollo'
 
 interface SafeSubscriptionOptions<TData> {
   query: DocumentNode
