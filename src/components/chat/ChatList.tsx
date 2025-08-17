@@ -1,12 +1,12 @@
-// src/components/chat/ChatList.tsx
 import React, { useEffect, useState } from 'react'
 import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
-import clsx from 'clsx'
 import { useQuery, useMutation } from '@apollo/client'
-import { GET_CHATS, CREATE_CHAT, SUBSCRIBE_TO_CHATS } from '/home/project/src/graphql/queries'
+import clsx from 'clsx'
+import { GET_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
 import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
 import { nhost } from '/home/project/src/lib/nhost'
 import { useSafeSubscription } from '/home/project/src/hooks/useSafeSubscription'
+import { SUBSCRIBE_TO_CHATS } from '/home/project/src/graphql/queries'
 
 interface Message {
   id: string
@@ -33,13 +33,8 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   // Fetch token on mount and listen for auth changes
   useEffect(() => {
     const fetchToken = async () => {
-      try {
-        const t = await nhost.auth.getAccessToken()
-        setToken(t)
-      } catch (err) {
-        console.error('Token fetch error:', err)
-        setToken(null)
-      }
+      const t = await nhost.auth.getAccessToken()
+      setToken(t)
     }
     fetchToken()
     const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
@@ -47,9 +42,9 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   }, [])
 
   const { data, loading, error, refetch } = useQuery(GET_CHATS, {
-    skip: !token,
-    fetchPolicy: 'cache-and-network',
     errorPolicy: 'all',
+    fetchPolicy: 'cache-and-network',
+    skip: !token,
   })
 
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
@@ -60,25 +55,28 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         onSelectChat(newChat.id)
       }
     },
-    onError: (err) => console.error('Error creating chat:', err),
+    onError: (error) => console.error('Error creating chat:', error)
   })
 
   const [deleteChat] = useMutation(DELETE_CHAT, {
     onCompleted: () => refetch(),
-    onError: (err) => console.error('Error deleting chat:', err),
+    onError: (error) => console.error('Error deleting chat:', error)
   })
 
-  // ✅ Safe subscription
-  useSafeSubscription({
-    query: SUBSCRIBE_TO_CHATS,
-    skip: !token,
-    onData: (subData) => {
-      if (subData?.chats) setChats(subData.chats)
-    }
+  // ✅ Use the safe subscription hook
+  const { data: subData, subError } = useSafeSubscription(SUBSCRIBE_TO_CHATS, {
+    skipUntilToken: true,
+    onData: ({ data: subscriptionData }) => {
+      if (subscriptionData.data?.chats) {
+        setChats(subscriptionData.data.chats)
+      }
+    },
   })
 
   useEffect(() => {
-    if (data?.chats) setChats(data.chats)
+    if (data?.chats) {
+      setChats(data.chats)
+    }
   }, [data])
 
   const handleCreateChat = async () => {
@@ -101,7 +99,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     }
   }
 
-  if (loading && chats.length === 0) {
+  if ((loading || !token) && chats.length === 0) {
     return (
       <div className="w-80 flex flex-col p-4 border-r border-gray-200 h-full">
         <div className="flex items-center justify-center h-full">
@@ -111,7 +109,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
     )
   }
 
-  if (error && chats.length === 0) {
+  if ((error || subError) && chats.length === 0) {
     return (
       <div className="w-80 flex flex-col p-4 border-r border-gray-200 h-full">
         <div className="flex items-center justify-between mb-4">
@@ -126,7 +124,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-gray-500">
-            <p className="text-sm mb-4">Unable to load chats</p>
+            <p className="text-sm mb-4">{subError ? 'Subscription error' : 'Unable to load chats'}</p>
             <button
               onClick={() => refetch()}
               className="text-blue-600 hover:text-blue-700 text-sm"
