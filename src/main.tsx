@@ -1,12 +1,14 @@
-// src/main.tsx
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { ApolloProvider } from '@apollo/client';
-import App from './App.tsx';
-import './index.css';
-import { apolloClient } from './lib/apollo.ts'; // ✅ Import our client
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
 
-createRoot(document.getElementById('root')!).render(
+import { NhostProvider } from "@nhost/react";
+import { ApolloProvider } from "@apollo/client";
+import { nhost } from "./lib/nhost";
+import { apolloClient } from "./lib/apollo";
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <NhostProvider nhost={nhost}>
       <ApolloProvider client={apolloClient}>
@@ -15,3 +17,4 @@ createRoot(document.getElementById('root')!).render(
     </NhostProvider>
   </StrictMode>
 );
+
