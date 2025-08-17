@@ -1,3 +1,4 @@
+// signinform.tsx
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
@@ -18,10 +19,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
   const { resetPassword, isLoading: isResetting, isSuccess: resetSuccess, error: resetError } = useResetPassword()
   const { isAuthenticated } = useAuthenticationStatus()
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return null
-  }
+  if (isAuthenticated) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,12 +27,12 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     try {
       await signInEmailPassword(email, password)
 
-      // Refresh Apollo subscriptions after login
-      import('../../lib/apollo').then(({ wsClient }) => {
-        if (wsClient) {
-          wsClient.dispose()
-        }
-      })
+      // Dispose old WS client to force creation with new token
+      const apollo = await import('../../lib/apollo')
+      if (apollo.wsClient) {
+        apollo.wsClient.dispose()
+        apollo.wsClient = null
+      }
     } catch (err) {
       console.error('Sign in error:', err)
     }
@@ -54,9 +52,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
       <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <h2 className="mt-6 text-3xl font-bold text-gray-900">
-              Reset your password
-            </h2>
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">Reset your password</h2>
             <p className="mt-2 text-sm text-gray-600">
               Enter your email address and we'll send you a link to reset your password
             </p>
@@ -76,9 +72,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
           ) : (
             <form className="mt-8 space-y-6" onSubmit={handleForgotPassword}>
               <div>
-                <label htmlFor="reset-email" className="sr-only">
-                  Email address
-                </label>
+                <label htmlFor="reset-email" className="sr-only">Email address</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
@@ -127,19 +121,13 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Welcome back! Log in to continue
-          </p>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">Sign in to your account</h2>
+          <p className="mt-2 text-sm text-gray-600">Welcome back! Log in to continue</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
+              <label htmlFor="email" className="sr-only">Email address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
@@ -157,9 +145,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+              <label htmlFor="password" className="sr-only">Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
@@ -179,20 +165,18 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" /> : <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />}
                 </button>
               </div>
             </div>
           </div>
+
           {error && hasAttemptedSignIn && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <p className="text-sm text-red-600">Unable to sign in. Please check your credentials and try again.</p>
             </div>
           )}
+
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -202,6 +186,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
               Forgot password?
             </button>
           </div>
+
           <div className="space-y-3">
             <button
               type="submit"
