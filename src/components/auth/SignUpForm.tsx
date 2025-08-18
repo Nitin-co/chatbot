@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSignUpEmailPassword } from '@nhost/react'
-import { Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, CheckCircle, MessageCircle } from 'lucide-react'
 
 interface SignUpFormProps {
   onToggleMode: () => void
@@ -33,12 +33,12 @@ export default function SignUpForm({ onToggleMode }: SignUpFormProps) {
               Account created successfully!
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Please check your email to verify your account before signing in.
+              You can now sign in and start chatting with your AI assistant.
             </p>
           </div>
           <button
             onClick={onToggleMode}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
           >
             Go to Sign In
           </button>
@@ -51,6 +51,7 @@ export default function SignUpForm({ onToggleMode }: SignUpFormProps) {
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
+          <MessageCircle className="mx-auto h-12 w-12 text-blue-600" />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             Create your account
           </h2>
@@ -122,7 +123,7 @@ export default function SignUpForm({ onToggleMode }: SignUpFormProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? 'Signing up...' : 'Sign up'}
             </button>

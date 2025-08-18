@@ -34,7 +34,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
+    <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-white">
       <div className="flex items-end space-x-3">
         <div className="flex-1">
           <textarea

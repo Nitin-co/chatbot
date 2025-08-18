@@ -1,7 +1,6 @@
-// signinform.tsx
 import React, { useState } from 'react'
 import { useSignInEmailPassword, useResetPassword, useAuthenticationStatus } from '@nhost/react'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, MessageCircle } from 'lucide-react'
 
 interface SignInFormProps {
   onToggleMode: () => void
@@ -26,13 +25,6 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     setHasAttemptedSignIn(true)
     try {
       await signInEmailPassword(email, password)
-
-      // Dispose old WS client to force creation with new token
-      const apollo = await import('../../lib/apollo')
-      if (apollo.wsClient) {
-        apollo.wsClient.dispose()
-        apollo.wsClient = null
-      }
     } catch (err) {
       console.error('Sign in error:', err)
     }
@@ -52,6 +44,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
       <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
+            <MessageCircle className="mx-auto h-12 w-12 text-blue-600" />
             <h2 className="mt-6 text-3xl font-bold text-gray-900">Reset your password</h2>
             <p className="mt-2 text-sm text-gray-600">
               Enter your email address and we'll send you a link to reset your password
@@ -98,7 +91,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isResetting ? 'Sending...' : 'Send reset link'}
                 </button>
@@ -121,8 +114,9 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
+          <MessageCircle className="mx-auto h-12 w-12 text-blue-600" />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">Sign in to your account</h2>
-          <p className="mt-2 text-sm text-gray-600">Welcome back! Log in to continue</p>
+          <p className="mt-2 text-sm text-gray-600">Welcome back! Log in to continue chatting</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -191,7 +185,7 @@ export default function SignInForm({ onToggleMode }: SignInFormProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>

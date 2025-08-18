@@ -1,109 +1,136 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { Plus, Loader, Trash2, MessageCircle } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
-import clsx from 'clsx'
-import { GET_CHATS, CREATE_CHAT } from '/home/project/src/graphql/queries'
-import { DELETE_CHAT } from '/home/project/src/graphql/mutations'
-import { nhost } from '/home/project/src/lib/nhost'
-import { useSafeSubscription } from '/home/project/src/hooks/useSafeSubscription'
-import { SUBSCRIBE_TO_CHATS } from '/home/project/src/graphql/queries'
+import { MessageCircle, Loader } from 'lucide-react'
+import { GET_MESSAGES, INSERT_MESSAGE } from '../../graphql/queries'
+import { MessageBubble } from './MessageBubble'
+import { MessageInput } from './MessageInput'
 
 interface Message {
   id: string
   text: string
-  sender: string
+  sender: 'user' | 'bot'
   created_at: string
-}
-
-interface Chat {
-  id: string
-  created_at: string
-  messages?: Message[]
 }
 
 interface ChatViewProps {
-  selectedChatId?: string
-  onSelectChat?: (chatId: string) => void
+  chatId: string
 }
 
-export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat }) => {
-  const [chats, setChats] = useState<Chat[]>([])
-  const [token, setToken] = useState<string | null>(null)
+// Simple bot responses
+const getBotResponse = (userMessage: string): string => {
+  const message = userMessage.toLowerCase()
+  
+  if (message.includes('hello') || message.includes('hi')) {
+    return "Hello! I'm your AI assistant. How can I help you today?"
+  }
+  
+  if (message.includes('how are you')) {
+    return "I'm doing great, thank you for asking! I'm here to help you with any questions or tasks you might have."
+  }
+  
+  if (message.includes('weather')) {
+    return "I don't have access to real-time weather data, but I'd recommend checking a weather app or website for the most current conditions in your area."
+  }
+  
+  if (message.includes('time')) {
+    return `The current time is ${new Date().toLocaleTimeString()}.`
+  }
+  
+  if (message.includes('help')) {
+    return "I'm here to help! You can ask me questions, have a conversation, or just chat. What would you like to talk about?"
+  }
+  
+  if (message.includes('thank')) {
+    return "You're welcome! I'm happy to help. Is there anything else you'd like to know?"
+  }
+  
+  if (message.includes('bye') || message.includes('goodbye')) {
+    return "Goodbye! It was nice chatting with you. Feel free to come back anytime!"
+  }
+  
+  // Default responses
+  const defaultResponses = [
+    "That's interesting! Tell me more about that.",
+    "I understand. What else would you like to discuss?",
+    "Thanks for sharing that with me. How can I help you further?",
+    "That's a great point. What are your thoughts on this?",
+    "I see what you mean. Is there anything specific you'd like to know?",
+  ]
+  
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
+}
 
-  // Fetch token and listen to auth changes
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const t = await nhost.auth.getAccessToken()
-        setToken(t)
-      } catch (err) {
-        console.error('Token fetch error:', err)
-        setToken(null)
-      }
-    }
-    fetchToken()
-    const unsubscribe = nhost.auth.onAuthStateChanged(fetchToken)
-    return () => unsubscribe()
-  }, [])
+export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isTyping, setIsTyping] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Queries & Mutations
-  const { data, loading, error, refetch } = useQuery(GET_CHATS, {
-    skip: !token,
-    fetchPolicy: 'cache-and-network',
+  const { data, loading, error, refetch } = useQuery(GET_MESSAGES, {
+    variables: { chatId },
     errorPolicy: 'all',
+    fetchPolicy: 'cache-and-network',
   })
 
-  const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
-    onCompleted: (data) => {
-      if (data?.insert_chats_one) {
-        const newChat = { ...data.insert_chats_one, messages: [] }
-        setChats(prev => [newChat, ...prev])
-        onSelectChat?.(newChat.id)
-      }
+  const [insertMessage] = useMutation(INSERT_MESSAGE, {
+    onCompleted: () => {
+      refetch()
     },
-    onError: (err) => console.error('Error creating chat:', err),
-  })
-
-  const [deleteChat] = useMutation(DELETE_CHAT, {
-    onCompleted: () => refetch(),
-    onError: (err) => console.error('Error deleting chat:', err),
-  })
-
-  // ✅ Use the safe subscription hook
-  const { data: subData, subError } = useSafeSubscription(SUBSCRIBE_TO_CHATS, {
-    skipUntilToken: true,
-    onData: ({ data: subscriptionData }) => {
-      if (subscriptionData.data?.chats) {
-        setChats(subscriptionData.data.chats)
-      }
-    },
+    onError: (error) => {
+      console.error('Error inserting message:', error)
+    }
   })
 
   useEffect(() => {
-    if (data?.chats) setChats(data.chats)
+    if (data?.messages) {
+      setMessages(data.messages)
+    }
   }, [data])
 
-  const handleCreateChat = async () => {
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, isTyping])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleSendMessage = async (text: string) => {
     try {
-      await createChat()
-    } catch (err) {
-      console.error('Error creating chat:', err)
+      // Insert user message
+      await insertMessage({
+        variables: {
+          chat_id: chatId,
+          text,
+          sender: 'user'
+        }
+      })
+
+      // Show typing indicator
+      setIsTyping(true)
+
+      // Simulate bot thinking time
+      setTimeout(async () => {
+        const botResponse = getBotResponse(text)
+        
+        // Insert bot message
+        await insertMessage({
+          variables: {
+            chat_id: chatId,
+            text: botResponse,
+            sender: 'bot'
+          }
+        })
+        
+        setIsTyping(false)
+      }, 1000 + Math.random() * 2000) // 1-3 seconds delay
+      
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setIsTyping(false)
     }
   }
 
-  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      try {
-        await deleteChat({ variables: { chat_id: chatId } })
-        if (selectedChatId === chatId) onSelectChat?.('')
-      } catch (err) {
-        console.error('Error deleting chat:', err)
-      }
-    }
-  }
-
-  if (!token || (loading && chats.length === 0)) {
+  if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
@@ -111,84 +138,58 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedChatId, onSelectChat
     )
   }
 
-  if ((error || subError) && chats.length === 0) {
+  if (error) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-        <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-        <p className="text-sm mb-2">
-          {subError ? 'Subscription error' : 'Unable to load chats'}
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="text-blue-600 hover:text-blue-700 text-sm"
-        >
-          Try again
-        </button>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm mb-2">Unable to load messages</p>
+          <button
+            onClick={() => refetch()}
+            className="text-blue-600 hover:text-blue-700 text-sm"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Chats</h2>
-        <button
-          onClick={handleCreateChat}
-          disabled={createLoading}
-          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          {createLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {chats.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-gray-500">
-          <MessageCircle className="h-12 w-12 mb-3 text-gray-300" />
-          <p className="text-sm">No chats yet</p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {chats.map(chat => {
-            const lastMsg = chat.messages?.[0]
-            const preview = lastMsg?.text || 'New chat'
-            const truncatedPreview = preview.length > 50 ? preview.substring(0, 50) + '...' : preview
-
-            return (
-              <li
-                key={chat.id}
-                onClick={() => onSelectChat?.(chat.id)}
-                className={clsx(
-                  'group p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-100',
-                  selectedChatId === chat.id && 'bg-blue-50 border border-blue-200'
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <MessageCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {truncatedPreview}
-                      </span>
-                    </div>
-                    {lastMsg && (
-                      <p className="text-xs text-gray-500">
-                        {lastMsg.sender === 'user' ? 'You' : 'Bot'} ·{' '}
-                        {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => handleDeleteChat(chat.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+    <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-gray-500">
+              <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-sm">Start a conversation</p>
+              <p className="text-xs mt-1">Send a message to begin chatting</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            {isTyping && (
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <MessageCircle className="h-4 w-4 text-blue-600" />
                 </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                <div className="bg-gray-100 rounded-lg px-4 py-2">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <MessageInput onSendMessage={handleSendMessage} disabled={isTyping} />
     </div>
   )
 }

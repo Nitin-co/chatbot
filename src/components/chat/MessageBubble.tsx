@@ -34,7 +34,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
       <div
         className={clsx(
-          'max-w-xs lg:max-w-md px-4 py-2 rounded-lg',
+          'max-w-xs sm:max-w-sm lg:max-w-md px-4 py-2 rounded-lg break-words',
           isBot ? 'bg-gray-100 text-gray-900' : 'bg-blue-600 text-white'
         )}
       >
