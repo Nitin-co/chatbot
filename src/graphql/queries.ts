@@ -1,5 +1,6 @@
 import { gql } from '@apollo/client'
 
+// Fetch all chats with the latest message
 export const GET_CHATS = gql`
   query GetChats {
     chats(order_by: { created_at: desc }) {
@@ -15,6 +16,7 @@ export const GET_CHATS = gql`
   }
 `
 
+// Fetch all messages for a specific chat
 export const GET_MESSAGES = gql`
   query GetMessages($chatId: uuid!) {
     messages(where: { chat_id: { _eq: $chatId } }, order_by: { created_at: asc }) {
@@ -26,6 +28,7 @@ export const GET_MESSAGES = gql`
   }
 `
 
+// Create a new chat
 export const CREATE_CHAT = gql`
   mutation CreateChat {
     insert_chats_one(object: {}) {
@@ -35,9 +38,10 @@ export const CREATE_CHAT = gql`
   }
 `
 
+// Insert a new message into a chat
 export const INSERT_MESSAGE = gql`
-  mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
-    insert_messages_one(object: { chat_id: $chat_id, text: $text, sender: $sender }) {
+  mutation InsertMessage($chatId: uuid!, $text: String!, $sender: String!) {
+    insert_messages_one(object: { chat_id: $chatId, text: $text, sender: $sender }) {
       id
       text
       sender
@@ -46,9 +50,10 @@ export const INSERT_MESSAGE = gql`
   }
 `
 
+// Delete a chat by ID
 export const DELETE_CHAT = gql`
-  mutation DeleteChat($chat_id: uuid!) {
-    delete_chats_by_pk(id: $chat_id) {
+  mutation DeleteChat($chatId: uuid!) {
+    delete_chats_by_pk(id: $chatId) {
       id
     }
   }
