@@ -1,14 +1,14 @@
 import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
-import { nhost } from '/src/lib/nhost'
+import { nhost } from './nhost'
 
-// HTTP link
+// Create HTTP link
 const httpLink = createHttpLink({
   uri: 'https://rvmtvbxomszjibeiocvu.hasura.eu-central-1.nhost.run/v1/graphql',
 })
 
-// Auth link
+// Auth link to add JWT token
 const authLink = setContext(async (_, { headers }) => {
   try {
     const token = await nhost.auth.getAccessToken()
@@ -24,19 +24,20 @@ const authLink = setContext(async (_, { headers }) => {
   }
 })
 
-// Error link
+// Error link for handling GraphQL errors
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.error(`GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`)
     )
   }
+
   if (networkError) {
     console.error(`Network error: ${networkError}`)
   }
 })
 
-// Apollo Client
+// Create Apollo Client
 export const apolloClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
@@ -51,4 +52,3 @@ export const apolloClient = new ApolloClient({
     },
   },
 })
-
