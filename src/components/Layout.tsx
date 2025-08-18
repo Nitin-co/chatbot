@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAuthenticationStatus, useSignOut, useUserData } from '@nhost/react'
-import { LogOut, MessageCircle, Menu } from 'lucide-react'
+import { LogOut, MessageCircle } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
