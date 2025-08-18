@@ -1,4 +1,4 @@
-import { apolloClient } from './apollo';
+import { apolloClient } from '/home/project/src/lib/apollo';
 import { 
   GET_CHATS, 
   GET_MESSAGES, 
