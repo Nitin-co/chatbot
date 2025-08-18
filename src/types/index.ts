@@ -1,5 +1,5 @@
 import { apolloClient } from '/src/lib/apollo'
-import { GET_CHATS, GET_MESSAGES, CREATE_CHAT, INSERT_MESSAGE, DELETE_CHAT } from '/src/graphql/queries'
+import { GET_CHATS, GET_MESSAGES, CREATE_CHAT, INSERT_MESSAGE, DELETE_CHAT } from '/home/project/src/graphql/queries'
 
 export const getChats = async () => {
   const { data } = await apolloClient.query({ query: GET_CHATS, fetchPolicy: 'network-only' })
