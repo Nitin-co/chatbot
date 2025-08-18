@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { sendMessage } from '/home/project/src/graphql'
-import { Message } from '/home/project/src/types'
+import { sendMessage } from '/home/project/src/graphql/queries'
+import { Message } from '/home/project/src/graphql/queries'
 
 interface MessageInputProps {
   chatId: string
