@@ -1,18 +1,30 @@
-export interface Chat {
-  id: string
-  created_at: string
-  messages: Message[]
+import { apolloClient } from '/src/lib/apollo'
+import { GET_CHATS, GET_MESSAGES, CREATE_CHAT, INSERT_MESSAGE, DELETE_CHAT } from '/src/graphql/queries'
+
+export const getChats = async () => {
+  const { data } = await apolloClient.query({ query: GET_CHATS, fetchPolicy: 'network-only' })
+  return data.chats
 }
 
-export interface Message {
-  id: string
-  text: string
-  sender: 'user' | 'bot'
-  created_at: string
-  chat_id?: string
+export const getMessages = async (chatId: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID")
+  const { data } = await apolloClient.query({ query: GET_MESSAGES, variables: { chatId }, fetchPolicy: 'network-only' })
+  return data.messages
 }
 
-export interface User {
-  id: string
-  email: string
+export const createChat = async () => {
+  const { data } = await apolloClient.mutate({ mutation: CREATE_CHAT })
+  return data.insert_chats_one
+}
+
+export const sendMessage = async (chatId: string, text: string, sender: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID")
+  const { data } = await apolloClient.mutate({ mutation: INSERT_MESSAGE, variables: { chat_id: chatId, text, sender } })
+  return data.insert_messages_one
+}
+
+export const deleteChat = async (chatId: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID")
+  const { data } = await apolloClient.mutate({ mutation: DELETE_CHAT, variables: { chatId } })
+  return data.delete_chats_by_pk
 }
