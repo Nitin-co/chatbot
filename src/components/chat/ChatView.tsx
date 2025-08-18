@@ -1,13 +1,53 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { MessageCircle, Loader } from 'lucide-react'
-import { GET_MESSAGES, INSERT_MESSAGE } from '/src/graphql/queries'
-import { Message } from '/src/types'
+import { GET_MESSAGES, INSERT_MESSAGE } from '/home/project/src/graphql/queries'
 import { MessageBubble } from './MessageBubble'
 import { MessageInput } from './MessageInput'
 
+interface Message {
+  id: string
+  text: string
+  sender: 'user' | 'bot'
+  created_at: string
+}
+
 interface ChatViewProps {
   chatId: string
+}
+
+// Simple bot responses
+const getBotResponse = (userMessage: string): string => {
+  const message = userMessage.toLowerCase()
+  if (message.includes('hello') || message.includes('hi')) {
+    return "Hello! I'm your AI assistant. How can I help you today?"
+  }
+  if (message.includes('how are you')) {
+    return "I'm doing great, thank you for asking! I'm here to help you with any questions or tasks you might have."
+  }
+  if (message.includes('weather')) {
+    return "I don't have access to real-time weather data, but I'd recommend checking a weather app or website."
+  }
+  if (message.includes('time')) {
+    return `The current time is ${new Date().toLocaleTimeString()}.`
+  }
+  if (message.includes('help')) {
+    return "I'm here to help! You can ask me questions, have a conversation, or just chat."
+  }
+  if (message.includes('thank')) {
+    return "You're welcome! Is there anything else you'd like to know?"
+  }
+  if (message.includes('bye') || message.includes('goodbye')) {
+    return "Goodbye! It was nice chatting with you. Come back anytime!"
+  }
+  const defaultResponses = [
+    "That's interesting! Tell me more about that.",
+    "I understand. What else would you like to discuss?",
+    "Thanks for sharing that. How can I help further?",
+    "That's a great point. What are your thoughts?",
+    "I see what you mean. Anything specific you'd like to know?",
+  ]
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
@@ -48,14 +88,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
   }, [data])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isTyping])
-
-  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const getBotResponse = (text: string) => `Bot says: ${text}`
+  }, [messages, isTyping])
 
   const handleSendMessage = async (text: string) => {
     try {
