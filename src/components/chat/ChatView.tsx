@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { getMessages } from '/src/graphql'
-import { Message, Chat } from '/src/types'
-import { MessageBubble } from '/src/components/chat/MessageBubble'
-import { MessageInput } from '/src/components/chat/MessageInput'
+import { getMessages } from '/home/project/src/graphql'
+import { Message, Chat } from '/home/project/src/types'
+import { MessageBubble } from '/home/project/src/components/chat/MessageBubble'
+import { MessageInput } from '/home/project/src/components/chat/MessageInput'
 
 interface ChatViewProps {
   chat: Chat
