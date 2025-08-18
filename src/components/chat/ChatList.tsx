@@ -30,7 +30,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
 
   const [createChat, { loading: createLoading }] = useMutation(CREATE_CHAT, {
     onCompleted: (data) => {
-      if (data?.insert_chats_one) {
+      if (data?.insert_chats_one?.id) {
         onSelectChat(data.insert_chats_one.id)
         refetch()
       }

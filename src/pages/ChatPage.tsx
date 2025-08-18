@@ -4,8 +4,19 @@ import { ChatView } from '../components/chat/ChatView'
 import { MessageCircle } from 'lucide-react'
 
 export const ChatPage: React.FC = () => {
-  const [selectedChatId, setSelectedChatId] = useState<string>()
+  const [selectedChatId, setSelectedChatId] = useState<string>('')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const handleSelectChat = (chatId: string) => {
+    // Only set valid UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (chatId && uuidRegex.test(chatId)) {
+      setSelectedChatId(chatId)
+      setIsMobileMenuOpen(false)
+    } else {
+      setSelectedChatId('')
+    }
+  }
 
   return (
     <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -26,15 +37,12 @@ export const ChatPage: React.FC = () => {
       `}>
         <ChatList 
           selectedChatId={selectedChatId}
-          onSelectChat={(chatId) => {
-            setSelectedChatId(chatId)
-            setIsMobileMenuOpen(false) // Close mobile menu when chat is selected
-          }}
+          onSelectChat={handleSelectChat}
         />
       </div>
 
       {/* Chat View */}
-      {selectedChatId ? (
+      {selectedChatId && selectedChatId.length > 0 ? (
         <ChatView chatId={selectedChatId} />
       ) : (
         <div className="flex-1 flex items-center justify-center bg-gray-50">

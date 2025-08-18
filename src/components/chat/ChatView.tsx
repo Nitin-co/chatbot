@@ -61,6 +61,24 @@ const getBotResponse = (userMessage: string): string => {
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
+  // Validate chatId is a proper UUID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    return uuidRegex.test(uuid)
+  }
+
+  if (!chatId || !isValidUUID(chatId)) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm">Invalid chat selected</p>
+          <p className="text-xs mt-1">Please select a valid chat from the sidebar</p>
+        </div>
+      </div>
+    )
+  }
+
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
