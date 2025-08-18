@@ -2,8 +2,7 @@ import React from 'react'
 import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
 import { useQuery, useMutation } from '@apollo/client'
 import clsx from 'clsx'
-import { GET_CHATS, CREATE_CHAT, DELETE_CHAT } from '../../graphql/queries'
-
+import { GET_CHATS, CREATE_CHAT, DELETE_CHAT } from '/home/project/src/graphql/queries.ts'
 interface Message {
   id: string
   text: string
