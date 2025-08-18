@@ -1,62 +1,51 @@
-import { gql } from '@apollo/client'
+import { apolloClient } from '/home/project/src/lib/apollo';
+import { GET_CHATS, GET_MESSAGES, CREATE_CHAT, INSERT_MESSAGE, DELETE_CHAT } from './queries';
 
-// Get all chats with the latest message
-export const GET_CHATS = gql`
-  query GetChats {
-    chats(order_by: { created_at: desc }) {
-      id
-      created_at
-      messages(order_by: { created_at: desc }, limit: 1) {
-        id
-        text
-        sender
-        created_at
-      }
-    }
-  }
-`
+// 1️⃣ Get all chats with the latest message
+export const getChats = async () => {
+  const { data } = await apolloClient.query({ 
+    query: GET_CHATS, 
+    fetchPolicy: 'network-only' 
+  });
+  return data.chats;
+};
 
-// Get messages for a chat
-export const GET_MESSAGES = gql`
-  query GetMessages($chatId: uuid!) {
-    messages(where: { chat_id: { _eq: $chatId } }, order_by: { created_at: asc }) {
-      id
-      text
-      sender
-      created_at
-      chat_id
-    }
-  }
-`
+// 2️⃣ Get all messages for a specific chat
+export const getMessages = async (chatId: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID");
+  
+  const { data } = await apolloClient.query({
+    query: GET_MESSAGES,
+    variables: { chatId },
+    fetchPolicy: 'network-only'
+  });
+  return data.messages;
+};
 
-// Create chat
-export const CREATE_CHAT = gql`
-  mutation CreateChat {
-    insert_chats_one(object: {}) {
-      id
-      created_at
-    }
-  }
-`
+// 3️⃣ Create a new chat
+export const createChat = async () => {
+  const { data } = await apolloClient.mutate({ mutation: CREATE_CHAT });
+  return data.insert_chats_one; // returns { id, created_at }
+};
 
-// Insert message
-export const INSERT_MESSAGE = gql`
-  mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
-    insert_messages_one(object: { chat_id: $chat_id, text: $text, sender: $sender }) {
-      id
-      text
-      sender
-      created_at
-      chat_id
-    }
-  }
-`
+// 4️⃣ Send a message in a chat
+export const sendMessage = async (chatId: string, text: string, sender: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID");
 
-// Delete chat
-export const DELETE_CHAT = gql`
-  mutation DeleteChat($chatId: uuid!) {
-    delete_chats_by_pk(id: $chatId) {
-      id
-    }
-  }
-`
+  const { data } = await apolloClient.mutate({
+    mutation: INSERT_MESSAGE,
+    variables: { chatId, text, sender },
+  });
+  return data.insert_messages_one;
+};
+
+// 5️⃣ Delete a chat
+export const deleteChat = async (chatId: string) => {
+  if (!chatId) throw new Error("chatId is required and must be a valid UUID");
+
+  const { data } = await apolloClient.mutate({
+    mutation: DELETE_CHAT,
+    variables: { chatId },
+  });
+  return data.delete_chats_by_pk;
+};
