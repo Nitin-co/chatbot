@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { ChatList } from '../components/chat/ChatList'
-import { ChatView } from '../components/chat/ChatView'
+import { ChatList } from '/src/components/chat/ChatList'
+import { ChatView } from '/src/components/chat/ChatView'
 import { MessageCircle } from 'lucide-react'
 
 export const ChatPage: React.FC = () => {
@@ -42,7 +42,7 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* Chat View */}
-      {selectedChatId && selectedChatId.length > 0 ? (
+      {selectedChatId ? (
         <ChatView chatId={selectedChatId} />
       ) : (
         <div className="flex-1 flex items-center justify-center bg-gray-50">
