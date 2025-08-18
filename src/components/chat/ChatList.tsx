@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { getChats, createChat, deleteChat } from '/src/graphql'
-import { Chat } from '/src/types'
+import { getChats, createChat, deleteChat } from '/home/project/src/graphql/queries'
+import { Chat } from '/home/project/src/types/index'
 
 interface ChatListProps {
   onSelectChat: (chat: Chat) => void
