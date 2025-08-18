@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { getMessages } from '/home/project/src/graphql/queries'
+import { getMessages } from '/home/project/src/types/index'
 import { Message, Chat } from '/home/project/src/types/index'
 import { MessageBubble } from '/home/project/src/components/chat/MessageBubble'
 import { MessageInput } from '/home/project/src/components/chat/MessageInput'
