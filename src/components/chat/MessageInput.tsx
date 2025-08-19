@@ -13,9 +13,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim() || disabled) return
+    
     onSendMessage(message.trim())
     setMessage('')
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -34,17 +39,20 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-white">
-      <div className="flex items-end space-x-3">
+    <div className="border-t border-gray-200 p-4 bg-white">
+      <form onSubmit={handleSubmit} className="flex items-end space-x-3">
         <div className="flex-1">
           <textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => { setMessage(e.target.value); adjustTextareaHeight() }}
+            onChange={(e) => { 
+              setMessage(e.target.value)
+              adjustTextareaHeight()
+            }}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
+            placeholder={disabled ? "AI is typing..." : "Type your message..."}
             disabled={disabled}
-            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
+            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed"
             rows={1}
             style={{ maxHeight: '120px' }}
           />
@@ -56,7 +64,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
         >
           <Send className="h-4 w-4" />
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   )
 }

@@ -2,7 +2,8 @@ import React from 'react'
 import { Plus, MessageCircle, Loader, Trash2 } from 'lucide-react'
 import { useQuery, useMutation } from '@apollo/client'
 import clsx from 'clsx'
-import { GET_CHATS, CREATE_CHAT, DELETE_CHAT } from '/home/project/src/graphql/queries.ts'
+import { GET_CHATS, CREATE_CHAT, DELETE_CHAT } from '../../graphql/queries'
+
 interface Message {
   id: string
   text: string
@@ -72,7 +73,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
 
   if (loading) {
     return (
-      <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+      <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full bg-white">
         <div className="flex items-center justify-center h-full">
           <Loader className="h-8 w-8 animate-spin text-blue-600" />
         </div>
@@ -82,7 +83,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
 
   if (error) {
     return (
-      <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+      <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full bg-white">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Chats</h2>
           <button
@@ -108,7 +109,7 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
   const chats = data?.chats || []
 
   return (
-    <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full">
+    <div className="w-full md:w-80 flex flex-col p-4 border-r border-gray-200 h-full bg-white">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Chats</h2>
         <button

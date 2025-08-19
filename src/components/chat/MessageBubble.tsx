@@ -28,7 +28,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         'max-w-xs sm:max-w-sm lg:max-w-md px-4 py-2 rounded-lg break-words',
         isBot ? 'bg-gray-100 text-gray-900' : 'bg-blue-600 text-white'
       )}>
-        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
         <p className={clsx('text-xs mt-1', isBot ? 'text-gray-500' : 'text-blue-100')}>
           {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
