@@ -59,6 +59,13 @@ export const ChatList: React.FC<ChatListProps> = ({ selectedChatId, onSelectChat
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    
+    // Validate chatId before deleting
+    if (!chatId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(chatId)) {
+      console.error('Invalid chat ID, cannot delete chat')
+      return
+    }
+    
     if (window.confirm('Are you sure you want to delete this chat?')) {
       try {
         await deleteChat({ variables: { chat_id: chatId } })

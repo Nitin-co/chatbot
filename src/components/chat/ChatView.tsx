@@ -130,6 +130,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
 
   const { data, loading, error, refetch } = useQuery(GET_MESSAGES, {
     variables: { chatId },
+    skip: !chatId || !isValidUUID(chatId),
     errorPolicy: 'all',
     fetchPolicy: 'cache-and-network',
   })
@@ -151,6 +152,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ chatId }) => {
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return
+    
+    // Validate chatId before sending message
+    if (!chatId || !isValidUUID(chatId)) {
+      console.error('Invalid chat ID, cannot send message')
+      return
+    }
 
     try {
       // Insert user message
