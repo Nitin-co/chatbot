@@ -62,7 +62,7 @@
             },
             {
               "name": "variables",
-              "value": "={\"chat_id\": $json[\"chat_id\"], \"text\": $json[\"body\"][\"message\"]}"
+              "value": "={\"chat_id\": $json[\"input\"][\"chat_id\"], \"text\": $json[\"input\"][\"message\"]}"
             }
           ]
         }
@@ -85,7 +85,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"model\": \"openai/gpt-3.5-turbo\",\"messages\": [{\"role\": \"system\",\"content\": \"You are a helpful chatbot.\"},{\"role\": \"user\",\"content\": $json[\"body\"][\"message\"]}]}"
+        "jsonBody": "={\"model\": \"openai/gpt-3.5-turbo\",\"messages\": [{\"role\": \"system\",\"content\": \"You are a helpful chatbot.\"},{\"role\": \"user\",\"content\": $json[\"input\"][\"message\"]}]}"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -123,7 +123,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"query\": \"mutation InsertBotMessage($chat_id: uuid!, $text: String!) { insert_messages_one(object: { chat_id: $chat_id, sender: \\\"bot\\\", text: $text }) { id chat_id sender text created_at } }\",\"variables\": {\"chat_id\": $json[\"chat_id\"], \"text\": $json[\"botReply\"]}}"
+        "jsonBody": "={\"query\": \"mutation InsertBotMessage($chat_id: uuid!, $text: String!) { insert_messages_one(object: { chat_id: $chat_id, sender: \\\"bot\\\", text: $text }) { id chat_id sender text created_at } }\",\"variables\": {\"chat_id\": $json[\"input\"][\"chat_id\"], \"text\": $json[\"botReply\"]}}"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
