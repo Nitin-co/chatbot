@@ -19,12 +19,14 @@ export const createChat = async () => {
 
 export const sendMessage = async (chatId: string, text: string, sender: string) => {
   if (!chatId) throw new Error("chatId is required and must be a valid UUID")
+  console.log("📩 sendMessage called with:", { chatId, text, sender })
   const { data } = await apolloClient.mutate({
     mutation: INSERT_MESSAGE,
-    variables: { chat_id: chatId, text, sender } // already correct
+    variables: { chat_id: chatId, text, sender }
   })
   return data.insert_messages_one
 }
+
 
 export const deleteChat = async (chatId: string) => {
   if (!chatId) throw new Error("chatId is required and must be a valid UUID")
