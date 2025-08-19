@@ -22,7 +22,7 @@ export const sendMessage = async (chatId: string, text: string, sender: string) 
   console.log("📩 sendMessage called with:", { chatId, text, sender })
   const { data } = await apolloClient.mutate({
     mutation: INSERT_MESSAGE,
-    variables: { chat_id: chatId, text, sender }
+    variables: { chatId, text, sender }
   })
   return data.insert_messages_one
 }
