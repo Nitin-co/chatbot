@@ -43,15 +43,16 @@ export const CREATE_CHAT = gql`
 
 // Insert a new message
 export const INSERT_MESSAGE = gql`
-  mutation InsertMessage($chat_id: uuid!, $text: String!, $sender: String!) {
-    insert_messages_one(object: { chat_id: $chat_id, text: $text, sender: $sender }) {
-      id
-      chat_id
-      text
-      sender
-      created_at
-    }
+  mutation InsertMessage($chatId: uuid!, $text: String!, $sender: String!) {
+  insert_messages_one(object: { chat_id: $chatId, text: $text, sender: $sender }) {
+    id
+    chat_id
+    text
+    sender
+    created_at
   }
+}
+
 `
 
 // Delete a chat
